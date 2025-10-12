@@ -10,7 +10,7 @@ import {SendMoneyDomainService} from '../domain/service/SendMoneyDomainService';
 
 /**
  * 送金アプリケーションサービス
- * 
+ *
  * 役割: ユースケースの調整・オーケストレーション
  * - 受信ポート（SendMoneyUseCase）を実装
  * - 送信ポートを管理
@@ -19,6 +19,14 @@ import {SendMoneyDomainService} from '../domain/service/SendMoneyDomainService';
  */
 @injectable()
 export class SendMoneyApplicationService implements SendMoneyUseCase {
+    /**
+     * @inject が必要な理由:
+     * - TypeScriptの型情報（LoadAccountPort）→ interface なので実行時に消える（コンテナが LoadAccountPort interface が必要と言われても存在しないのでわからない）
+     * - トークン（LoadAccountPortToken）→ Symbol なので実行時に存在する
+     * - @inject → 「型の代わりにこのトークンを使って」という指示
+     *
+     * 注: SendMoneyDomainService はクラスだが、統一性のため全ての依存に @inject を使用
+     */
     constructor(
         @inject(SendMoneyDomainService)
         private readonly domainService: SendMoneyDomainService,
@@ -30,7 +38,8 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
         private readonly accountLock: AccountLock,
         @inject(MoneyTransferPropertiesToken)
         private readonly moneyTransferProperties: MoneyTransferProperties
-    ) {}
+    ) {
+    }
 
     /**
      * 送金を実行（ユースケースの調整）
