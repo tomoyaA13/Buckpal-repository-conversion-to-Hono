@@ -19,4 +19,4 @@ export interface LoadAccountPort {
 /**
  * DI用のシンボル
  */
-export const LoadAccountPort = Symbol('LoadAccountPort');
+export const LoadAccountPortToken = Symbol('LoadAccountPort');

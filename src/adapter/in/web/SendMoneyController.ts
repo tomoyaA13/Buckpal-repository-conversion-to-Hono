@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { container } from 'tsyringe';
-import { SendMoneyUseCase } from '../../../application/port/in/SendMoneyUseCase';
+import { SendMoneyUseCase, SendMoneyUseCaseToken } from '../../../application/port/in/SendMoneyUseCase';
 import { SendMoneyCommand } from '../../../application/port/in/SendMoneyCommand';
 import { AccountId } from '../../../application/domain/model/Activity';
 import { Money } from '../../../application/domain/model/Money';
@@ -38,7 +38,7 @@ sendMoneyRouter.post(
 
       // DIコンテナからユースケースを取得
       const sendMoneyUseCase = container.resolve<SendMoneyUseCase>(
-        SendMoneyUseCase as symbol
+        SendMoneyUseCaseToken
       );
 
       // 送金を実行

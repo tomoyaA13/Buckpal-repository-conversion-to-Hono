@@ -17,4 +17,4 @@ export interface SendMoneyUseCase {
 /**
  * DI用のシンボル
  */
-export const SendMoneyUseCase = Symbol('SendMoneyUseCase');
+export const SendMoneyUseCaseToken = Symbol('SendMoneyUseCase');

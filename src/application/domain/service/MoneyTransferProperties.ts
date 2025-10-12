@@ -10,4 +10,4 @@ export class MoneyTransferProperties {
 /**
  * DI用のシンボル
  */
-export const MoneyTransferProperties = Symbol('MoneyTransferProperties');
+export const MoneyTransferPropertiesToken = Symbol('MoneyTransferProperties');

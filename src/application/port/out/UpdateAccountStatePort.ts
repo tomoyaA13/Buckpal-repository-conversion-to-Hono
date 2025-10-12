@@ -17,4 +17,4 @@ export interface UpdateAccountStatePort {
 /**
  * DI用のシンボル
  */
-export const UpdateAccountStatePort = Symbol('UpdateAccountStatePort');
+export const UpdateAccountStatePortToken = Symbol('UpdateAccountStatePort');

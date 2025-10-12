@@ -3,19 +3,19 @@ import { SendMoneyUseCase } from '../../port/in/SendMoneyUseCase';
 import { SendMoneyCommand } from '../../port/in/SendMoneyCommand';
 import {
   LoadAccountPort,
-  LoadAccountPort as LoadAccountPortSymbol,
+  LoadAccountPortToken,
 } from '../../port/out/LoadAccountPort';
 import {
   UpdateAccountStatePort,
-  UpdateAccountStatePort as UpdateAccountStatePortSymbol,
+  UpdateAccountStatePortToken,
 } from '../../port/out/UpdateAccountStatePort';
 import {
   AccountLock,
-  AccountLock as AccountLockSymbol,
+  AccountLockToken,
 } from '../../port/out/AccountLock';
 import {
   MoneyTransferProperties,
-  MoneyTransferProperties as MoneyTransferPropertiesSymbol,
+  MoneyTransferPropertiesToken,
 } from './MoneyTransferProperties';
 import { ThresholdExceededException } from './ThresholdExceededException';
 
@@ -26,16 +26,16 @@ import { ThresholdExceededException } from './ThresholdExceededException';
 @injectable()
 export class SendMoneyService implements SendMoneyUseCase {
   constructor(
-    @inject(LoadAccountPortSymbol)
+    @inject(LoadAccountPortToken)
     private readonly loadAccountPort: LoadAccountPort,
 
-    @inject(UpdateAccountStatePortSymbol)
+    @inject(UpdateAccountStatePortToken)
     private readonly updateAccountStatePort: UpdateAccountStatePort,
 
-    @inject(AccountLockSymbol)
+    @inject(AccountLockToken)
     private readonly accountLock: AccountLock,
 
-    @inject(MoneyTransferPropertiesSymbol)
+    @inject(MoneyTransferPropertiesToken)
     private readonly moneyTransferProperties: MoneyTransferProperties
   ) {}
 

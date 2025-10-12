@@ -23,4 +23,4 @@ export interface AccountLock {
 /**
  * DI用のシンボル
  */
-export const AccountLock = Symbol('AccountLock');
+export const AccountLockToken = Symbol('AccountLock');
