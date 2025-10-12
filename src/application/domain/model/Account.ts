@@ -9,6 +9,15 @@ import { Money } from './Money';
  * アカウントオブジェクトは最新のアクティビティウィンドウのみを含む
  * 合計残高 = ベースライン残高 + アクティビティウィンドウ内の残高
  */
+
+// Account は以下を集約しています：
+// 集約の構成
+// Account (集約ルート)
+// ├── AccountId (値オブジェクト)
+// ├── Money (baselineBalance) (値オブジェクト)
+// └── ActivityWindow (エンティティ)
+//     └── Activity[] (複数の取引エンティティ)
+
 export class Account {
   private constructor(
     private readonly id: AccountId | null,
