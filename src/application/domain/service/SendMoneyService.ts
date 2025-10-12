@@ -13,7 +13,7 @@ import {ThresholdExceededException} from './ThresholdExceededException';
 //     ↓ 依存(実装)
 // ドメイン層のインターフェース（application/port/out）
 //     ↑ 依存
-// ドメイン層のサービス（application/domain/service）
+// ドメイン層のサービス（application/domain/service）(ここ)
 //     ↓ 依存
 // ドメイン層のエンティティ（application/domain/model）
 

@@ -3,7 +3,7 @@ import {Account} from '../../domain/model/Account';
 // 依存関係の向き(永続化層がドメイン層に依存する)
 // 永続化層（adapter/out/persistence）
 //     ↓ 依存(実装)
-// ドメイン層のインターフェース（application/port/out）
+// ドメイン層のインターフェース（application/port/out）(ここ)
 //     ↑ 依存
 // ドメイン層のサービス（application/domain/service）
 //     ↓ 依存
