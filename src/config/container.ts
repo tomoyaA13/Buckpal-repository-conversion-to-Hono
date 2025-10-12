@@ -36,6 +36,7 @@ export function setupContainer(): void {
     useToken: InMemoryAccountPersistenceAdapter,
   });
 
+  // LoadAccountPortとUpdateAccountStatePortは同じインスタンスを使用
   container.register(UpdateAccountStatePortToken, {
     useToken: InMemoryAccountPersistenceAdapter,
   });
