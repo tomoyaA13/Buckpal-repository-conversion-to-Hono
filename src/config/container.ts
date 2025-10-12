@@ -1,7 +1,8 @@
 import 'reflect-metadata';
 import { container } from 'tsyringe';
 import { Money } from '../application/domain/model/Money';
-import { SendMoneyService } from '../application/domain/service/SendMoneyService';
+import { SendMoneyDomainService } from '../application/domain/service/SendMoneyDomainService';
+import { SendMoneyApplicationService } from '../application/service/SendMoneyApplicationService';
 import { MoneyTransferProperties, MoneyTransferPropertiesToken } from '../application/domain/service/MoneyTransferProperties';
 import { InMemoryAccountPersistenceAdapter } from '../adapter/out/persistence/InMemoryAccountPersistenceAdapter';
 import { NoOpAccountLock } from '../adapter/out/persistence/NoOpAccountLock';
@@ -44,9 +45,12 @@ export function setupContainer(): void {
     useClass: NoOpAccountLock,
   });
 
-  // ===== ドメインサービス（ユースケース）の登録 =====
+  // ===== ドメインサービス（純粋なビジネスロジック）の登録 =====
+  container.registerSingleton(SendMoneyDomainService, SendMoneyDomainService);
+
+  // ===== アプリケーションサービス（ユースケースの調整役）の登録 =====
   container.register(SendMoneyUseCaseToken, {
-    useClass: SendMoneyService,
+    useClass: SendMoneyApplicationService,
   });
 
   console.log('✅ DI container initialized successfully');

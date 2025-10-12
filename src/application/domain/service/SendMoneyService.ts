@@ -22,7 +22,7 @@ import {ThresholdExceededException} from './ThresholdExceededException';
  * ヘキサゴナルアーキテクチャのドメインサービス層
  */
 @injectable()
-export class SendMoneyService implements SendMoneyUseCase {
+export class SendMoneyService implements SendMonewyUseCase {
     constructor(
         @inject(LoadAccountPortToken)
         private readonly loadAccountPort: LoadAccountPort,

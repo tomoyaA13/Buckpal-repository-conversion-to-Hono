@@ -1,0 +1,62 @@
+sequenceDiagram
+    participant Controller as SendMoneyController<br/>(Webアダプタ)
+    participant AppService as SendMoneyApplicationService<br/>(アプリケーション層)
+    participant DomainService as SendMoneyDomainService<br/>(ドメイン層)
+    participant Account as Account<br/>(エンティティ)
+    participant Persistence as InMemoryAccountPersistenceAdapter<br/>(永続化アダプタ)
+    
+    Note over Controller,Persistence: ✅ 図3.6準拠: アプリケーション層とドメイン層を分離
+
+    Controller->>AppService: sendMoney(command)
+    
+    rect rgb(255, 240, 200)
+    Note over AppService: ① 事前検証<br/>━━━━━━━━━━━━━━━━━━<br/>🎯 目的:<br/>リクエストの妥当性を確認<br/>━━━━━━━━━━━━━━━━━━<br/>不正なリクエストを<br/>早期に拒否する
+    AppService->>DomainService: isWithinThreshold(money, threshold)
+    DomainService-->>AppService: true/false
+    end
+    
+    rect rgb(200, 240, 255)
+    Note over AppService: ② データ取得<br/>━━━━━━━━━━━━━━━━━━<br/>🎯 目的:<br/>ビジネスロジック実行に<br/>必要なデータを準備<br/>━━━━━━━━━━━━━━━━━━<br/>送信ポートを使って<br/>アカウント情報をロード
+    AppService->>Persistence: loadAccount(sourceAccountId, baselineDate)
+    Persistence-->>AppService: sourceAccount
+    AppService->>Persistence: loadAccount(targetAccountId, baselineDate)
+    Persistence-->>AppService: targetAccount
+    end
+    
+    rect rgb(200, 255, 200)
+    Note over AppService: ③ リソースロック<br/>━━━━━━━━━━━━━━━━━━<br/>🎯 目的:<br/>並行処理での<br/>データ不整合を防ぐ<br/>━━━━━━━━━━━━━━━━━━<br/>同時に同じアカウントが<br/>操作されないようにする
+    AppService->>Persistence: lockAccount(sourceAccountId)
+    AppService->>Persistence: lockAccount(targetAccountId)
+    end
+    
+    rect rgb(255, 220, 255)
+    Note over AppService: ④ ビジネスロジック実行<br/>━━━━━━━━━━━━━━━━━━<br/>🎯 目的:<br/>ドメインサービスに<br/>ビジネスロジックを委譲<br/>━━━━━━━━━━━━━━━━━━<br/>アプリケーション層は<br/>ドメイン知識を持たない
+    AppService->>DomainService: executeTransfer(sourceAccount, targetAccount, money)
+    
+    Note over DomainService: 純粋なビジネスロジック<br/>（ポートを知らない）
+    
+    DomainService->>Account: withdraw(money, targetAccountId)
+    Account-->>DomainService: true/false
+    DomainService->>Account: deposit(money, sourceAccountId)
+    Account-->>DomainService: true/false
+    
+    DomainService-->>AppService: true/false
+    end
+    
+    rect rgb(200, 240, 255)
+    Note over AppService: ⑤ 永続化<br/>━━━━━━━━━━━━━━━━━━<br/>🎯 目的:<br/>ビジネスロジックの結果を<br/>データベースに保存<br/>━━━━━━━━━━━━━━━━━━<br/>送信ポートを使って<br/>アカウント状態を更新
+    AppService->>Persistence: updateActivities(sourceAccount)
+    AppService->>Persistence: updateActivities(targetAccount)
+    end
+    
+    rect rgb(200, 255, 200)
+    Note over AppService: ⑥ リソース解放<br/>━━━━━━━━━━━━━━━━━━<br/>🎯 目的:<br/>ロックを解放して<br/>他のリクエストが処理できるようにする<br/>━━━━━━━━━━━━━━━━━━<br/>finally句で必ず実行され<br/>デッドロックを防ぐ
+    AppService->>Persistence: releaseAccount(sourceAccountId)
+    AppService->>Persistence: releaseAccount(targetAccountId)
+    end
+    
+    AppService-->>Controller: true/false
+
+    rect rgb(255, 255, 255)
+    Note over Controller,Persistence: 📊 全体の流れの目的<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>🎯 責務の分離（図3.6の実現）:<br/>① アプリケーション層: 調整・ポート管理<br/>② ドメイン層: 純粋なビジネスロジック<br/>→ ドメイン層がポートに依存しない<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>🎯 保守性の向上:<br/>ビジネスルール変更はドメイン層のみ<br/>フレームワーク変更はアプリケーション層のみ<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>🎯 テスト容易性:<br/>ドメインロジックを単体で<br/>テストできる
+    end
