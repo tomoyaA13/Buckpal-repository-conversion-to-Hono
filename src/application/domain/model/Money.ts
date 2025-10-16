@@ -5,6 +5,16 @@
 export class Money {
   public static readonly ZERO = Money.of(0);
 
+  // // 省略なしで書くと...
+  //
+  // // ①プロパティの宣言
+  // private readonly amount: bigint;
+  //
+  // // ②コンストラクタの定義
+  // private constructor(amount: bigint) {
+  //   // ③プロパティへの代入
+  //   this.amount = amount;
+  // }
   private constructor(private readonly amount: bigint) {}
 
   /**
