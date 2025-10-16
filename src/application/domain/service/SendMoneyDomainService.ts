@@ -4,8 +4,8 @@ import {Money} from '../model/Money';
 import {AccountId} from '../model/Account';
 
 /**
- * 送金ドメインサービス
- * 
+ * 送金ドメインサービス(このドメインサービスは「送金の手順」という純粋なビジネスロジックだけに集中)
+ *
  * 役割: 純粋なビジネスロジックのみを実装
  * - ポート（インターフェース）を知らない
  * - フレームワークに依存しない
@@ -15,7 +15,7 @@ import {AccountId} from '../model/Account';
 export class SendMoneyDomainService {
     /**
      * 送金トランザクションを実行
-     * 
+     *
      * @param sourceAccount 送金元アカウント
      * @param targetAccount 送金先アカウント
      * @param money 送金額
@@ -52,7 +52,7 @@ export class SendMoneyDomainService {
     // ドメインサービスに配置されています。
     /**
      * 送金額が限度額を超えていないかチェック
-     * 
+     *
      * @param amount 送金額
      * @param threshold 限度額
      * @returns 限度額以内ならtrue
