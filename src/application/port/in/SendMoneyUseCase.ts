@@ -7,7 +7,7 @@ import {SendMoneyCommand} from './SendMoneyCommand';
 
 // 「私に送金をしてほしいなら、SendMoneyCommand という形式でデータを渡して、sendMoney メソッドを呼んでください。
 // そうすれば、外側からの要求を私が処理しますよ」と言っているようなもの。
-// つまり、SendMoneyUseCaseインターフェースは、アプリケーションコアとアダプター層の境界線
+// つまり、この SendMoneyUseCase インターフェースは、アプリケーションコアとアダプター層の境界線
 export interface SendMoneyUseCase {
     /**
      * 送金を実行
