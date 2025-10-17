@@ -212,6 +212,36 @@ export class AccountMapper {
 1. **マッパーはステートレスにする**
    - すべてのメソッドを `static` にする
    - インスタンス変数を持たない
+   
+   **理由：**
+   - **純粋関数**: 同じ入力に対して常に同じ出力を返し、副作用がない
+   - **並行処理で安全**: 複数のリクエストが同時に来ても競合が発生しない
+   - **テストが簡単**: 各テストが独立しており、前のテストの影響を受けない
+   - **インスタンス化不要**: メモリ効率が良く、DIコンテナへの登録も不要
+   - **意図が明確**: 「変換ユーティリティ」であることが一目瞭然
+   
+   ```typescript
+   // ✅ GOOD: ステートレス
+   export class SendMoneyMapper {
+     static toCommand(request: SendMoneyWebRequest): SendMoneyCommand {
+       // 引数のみから結果を生成（外部の状態に依存しない）
+       return new SendMoneyCommand(/* ... */);
+     }
+   }
+   
+   // 使い方：インスタンス化不要
+   const command = SendMoneyMapper.toCommand(request);
+   
+   // ❌ BAD: ステートフル
+   export class BadMapper {
+     private lastTimestamp: Date;  // 状態を持つ
+     
+     toCommand(request: SendMoneyWebRequest): SendMoneyCommand {
+       this.lastTimestamp = new Date();  // 副作用あり
+       // 前回の変換の影響を受ける可能性がある
+     }
+   }
+   ```
 
 2. **変換ロジックにビジネスロジックを含めない**
    - マッパーは純粋に「変換」のみを行う
@@ -230,6 +260,37 @@ export class AccountMapper {
 5. **マッパーは双方向に変換できるようにする**
    - `A → B` と `B → A` の両方のメソッドを提供
    - ただし、完全に可逆的である必要はない（情報の損失は許容される）
+   
+   **「双方向」の意味：**
+   - 両方向の変換メソッドを提供すること（例：`toDomain()` と `toEntities()`）
+   
+   **「完全に可逆的である必要はない」の意味：**
+   - `A → B → A'` となり、元のAと異なるA'になってもOK
+   - 各層が必要な情報だけを持つべきであり、全ての情報を保持する必要はない
+   
+   ```typescript
+   // 例：Web層の詳細情報はドメインモデルに含まれない
+   const webRequest = {
+     sourceAccountId: '1',
+     targetAccountId: '2',
+     amount: '1000',
+     clientTimestamp: '2025-10-17T10:00:00Z',  // Web層の関心事
+     userAgent: 'Mozilla/5.0...'                // Web層の関心事
+   };
+   
+   // Web → ドメイン（clientTimestamp, userAgentは失われる）
+   const command = SendMoneyMapper.toCommand(webRequest);
+   // command には sourceAccountId, targetAccountId, money のみ
+   
+   // ドメイン → Web（サーバー側で新しいタイムスタンプが生成される）
+   const response = SendMoneyMapper.toSuccessResponse(webRequest);
+   // response.data.timestamp は元の clientTimestamp とは異なる
+   ```
+   
+   **なぜ情報の損失が許容されるのか：**
+   - **ドメインモデルはビジネスロジックに集中すべき**（Web層やDB層の詳細は不要）
+   - **計算値は保存しない**（次回読み込み時に再計算すればよい）
+   - **DBの自動生成値**（id、created_at等）はドメインモデルに含める必要がない
 
 詳細は [03-mappers-guide.md](./03-mappers-guide.md) を参照してください。
 
