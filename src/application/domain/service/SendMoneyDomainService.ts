@@ -34,6 +34,7 @@ export class SendMoneyDomainService {
 
         // ビジネスロジック1: 送金元から引き出し
         if (!sourceAccount.withdraw(money, targetAccountId)) {
+
             return false;
         }
 

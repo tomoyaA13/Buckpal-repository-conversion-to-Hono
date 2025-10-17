@@ -73,6 +73,7 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
         const sourceAccountId = sourceAccount.getId();
         const targetAccountId = targetAccount.getId();
 
+
         if (!sourceAccountId || !targetAccountId) {
             throw new Error('Expected account ID not to be empty');
         }

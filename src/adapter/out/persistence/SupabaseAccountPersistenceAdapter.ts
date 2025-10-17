@@ -20,13 +20,15 @@ export class SupabaseAccountPersistenceAdapter
         this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
     }
 
-    // 残りの実装は前回と同じ
     async loadAccount(accountId: AccountId, baselineDate: Date): Promise<Account> {
+        // BigIntをnumberに変換
+        const accountIdNum = Number(accountId.getValue());
+
         // アカウントの存在確認
         const {data: accountData, error: accountError} = await this.supabase
             .from('accounts')
             .select('id')
-            .eq('id', accountId.getValue().toString())
+            .eq('id', accountIdNum)
             .single();
 
         if (accountError || !accountData) {
@@ -37,7 +39,7 @@ export class SupabaseAccountPersistenceAdapter
         const {data: activitiesAfterBaseline, error: activitiesError} = await this.supabase
             .from('activities')
             .select('*')
-            .eq('owner_account_id', accountId.getValue().toString())
+            .eq('owner_account_id', accountIdNum)
             .gte('timestamp', baselineDate.toISOString())
             .order('timestamp', {ascending: true});
 
@@ -49,8 +51,8 @@ export class SupabaseAccountPersistenceAdapter
         const {data: withdrawals, error: withdrawalError} = await this.supabase
             .from('activities')
             .select('amount')
-            .eq('source_account_id', accountId.getValue().toString())
-            .eq('owner_account_id', accountId.getValue().toString())
+            .eq('source_account_id', accountIdNum)
+            .eq('owner_account_id', accountIdNum)
             .lt('timestamp', baselineDate.toISOString());
 
         if (withdrawalError) {
@@ -66,8 +68,8 @@ export class SupabaseAccountPersistenceAdapter
         const {data: deposits, error: depositError} = await this.supabase
             .from('activities')
             .select('amount')
-            .eq('target_account_id', accountId.getValue().toString())
-            .eq('owner_account_id', accountId.getValue().toString())
+            .eq('target_account_id', accountIdNum)
+            .eq('owner_account_id', accountIdNum)
             .lt('timestamp', baselineDate.toISOString());
 
         if (depositError) {
@@ -115,10 +117,10 @@ export class SupabaseAccountPersistenceAdapter
 
         const activityRecords = newActivities.map((activity) => ({
             timestamp: activity.getTimestamp().toISOString(),
-            owner_account_id: activity.getOwnerAccountId().getValue().toString(),
-            source_account_id: activity.getSourceAccountId().getValue().toString(),
-            target_account_id: activity.getTargetAccountId().getValue().toString(),
-            amount: activity.getMoney().getAmount().toString(),
+            owner_account_id: Number(activity.getOwnerAccountId().getValue()),
+            source_account_id: Number(activity.getSourceAccountId().getValue()),
+            target_account_id: Number(activity.getTargetAccountId().getValue()),
+            amount: Number(activity.getMoney().getAmount()),
         }));
 
         const {error} = await this.supabase
@@ -129,5 +131,4 @@ export class SupabaseAccountPersistenceAdapter
             throw new Error(`Failed to insert activities: ${error.message}`);
         }
     }
-
 }

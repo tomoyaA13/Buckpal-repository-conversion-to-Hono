@@ -73,7 +73,6 @@ sendMoneyRouter.post(
             }
 
             if (error instanceof Error) {
-                console.log(error)
                 return c.json(
                     {
                         success: false,
