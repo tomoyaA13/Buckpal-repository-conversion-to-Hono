@@ -19,9 +19,10 @@ app.get('/', (c) => {
     });
 });
 
-// 環境変数をDIコンテナに渡す
+// 起動時に一度だけDIコンテナを初期化
+// Cloudflare Workers では最初のリクエスト時に実行される
 app.use('*', async (c, next) => {
-    // DIコンテナを環境変数付きで初期化
+    // 環境変数を使ってコンテナを初期化（初回のみ）
     setupContainer(c.env);
     await next();
 });

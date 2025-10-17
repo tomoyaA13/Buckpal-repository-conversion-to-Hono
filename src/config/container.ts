@@ -1,3 +1,4 @@
+// src/config/container.ts
 import 'reflect-metadata';
 import { container } from 'tsyringe';
 import { Money } from '../application/domain/model/Money';
@@ -13,13 +14,22 @@ import { AccountLockToken } from '../application/port/out/AccountLock';
 import { SendMoneyUseCaseToken } from '../application/port/in/SendMoneyUseCase';
 import type { CloudflareBindings } from '../types/bindings';
 
+// 初期化済みフラグ
+let isInitialized = false;
+
 /**
  * DIコンテナの初期化と依存関係の登録
+ * 起動時に一度だけ実行される
+ *
  * @param env Cloudflare Workers の環境変数
  */
 export function setupContainer(env: CloudflareBindings): void {
-    // コンテナをクリア（リクエストごとに新しいコンテナを使用）
-    container.clearInstances();
+    // 既に初期化済みなら何もしない
+    if (isInitialized) {
+        return;
+    }
+
+    console.log('🚀 Initializing DI container...');
 
     // ===== 設定オブジェクトの登録 =====
     const transferThreshold = Money.of(1_000_000); // 100万円が上限
@@ -33,12 +43,15 @@ export function setupContainer(env: CloudflareBindings): void {
     const useSupabase = env.USE_SUPABASE === 'true';
 
     if (useSupabase) {
-        // Supabase Adapter を使用
+        console.log('📦 Using Supabase adapter');
+
+        // Supabase Adapter を使用（シングルトン）
         const supabaseAdapter = new SupabaseAccountPersistenceAdapter(
             env.SUPABASE_URL,
             env.SUPABASE_PUBLISHABLE_KEY
         );
 
+        // 同じインスタンスを両方のポートで使用
         container.register(LoadAccountPortToken, {
             useValue: supabaseAdapter,
         });
@@ -47,7 +60,9 @@ export function setupContainer(env: CloudflareBindings): void {
             useValue: supabaseAdapter,
         });
     } else {
-        // InMemory Adapter を使用
+        console.log('💾 Using InMemory adapter');
+
+        // InMemory Adapter を使用（シングルトン）
         container.registerSingleton(
             InMemoryAccountPersistenceAdapter,
             InMemoryAccountPersistenceAdapter
@@ -75,7 +90,17 @@ export function setupContainer(env: CloudflareBindings): void {
         useClass: SendMoneyApplicationService,
     });
 
+    isInitialized = true;
     console.log(`✅ DI container initialized (Supabase: ${useSupabase})`);
+}
+
+/**
+ * コンテナをリセット（主にテスト用）
+ */
+export function resetContainer(): void {
+    container.clearInstances();
+    isInitialized = false;
+    console.log('🔄 DI container reset');
 }
 
 export { container };
