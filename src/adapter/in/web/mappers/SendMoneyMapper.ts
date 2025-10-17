@@ -1,0 +1,70 @@
+import { SendMoneyWebRequest } from '../models/SendMoneyWebRequest';
+import { SendMoneyWebResponse } from '../models/SendMoneyWebResponse';
+import { SendMoneyCommand } from '../../../../application/port/in/SendMoneyCommand';
+import { AccountId } from '../../../../application/domain/model/Activity';
+import { Money } from '../../../../application/domain/model/Money';
+
+/**
+ * Web層とアプリケーション層の間でモデルを変換するマッパー
+ * 
+ * 責務：
+ * - Webリクエストをドメインコマンドに変換
+ * - ビジネスロジックの結果をWebレスポンスに変換
+ */
+export class SendMoneyMapper {
+  /**
+   * WebリクエストをSendMoneyCommandに変換
+   * 
+   * Web層の文字列データをドメイン層の値オブジェクトに変換
+   */
+  static toCommand(request: SendMoneyWebRequest): SendMoneyCommand {
+    try {
+      const sourceAccountId = new AccountId(BigInt(request.sourceAccountId));
+      const targetAccountId = new AccountId(BigInt(request.targetAccountId));
+      const money = Money.of(BigInt(request.amount));
+
+      return new SendMoneyCommand(sourceAccountId, targetAccountId, money);
+    } catch (error) {
+      throw new Error(
+        `Failed to map web request to command: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * 成功レスポンスを作成
+   */
+  static toSuccessResponse(
+    request: SendMoneyWebRequest,
+    timestamp: Date = new Date()
+  ): SendMoneyWebResponse {
+    return {
+      success: true,
+      message: 'Money transfer completed successfully',
+      data: {
+        sourceAccountId: request.sourceAccountId,
+        targetAccountId: request.targetAccountId,
+        amount: request.amount,
+        timestamp: timestamp.toISOString(),
+      },
+    };
+  }
+
+  /**
+   * エラーレスポンスを作成
+   */
+  static toErrorResponse(
+    message: string,
+    code: string,
+    details?: Record<string, any>
+  ): SendMoneyWebResponse {
+    return {
+      success: false,
+      message,
+      error: {
+        code,
+        details,
+      },
+    };
+  }
+}
