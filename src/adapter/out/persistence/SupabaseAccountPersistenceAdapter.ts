@@ -74,28 +74,14 @@ export class SupabaseAccountPersistenceAdapter
       );
     }
 
-    // 4. エンティティを作成
+    // 4. Mapperを使ってエンティティを作成
     const persistedActivitiesAfter: PersistedActivityEntity[] = (
       activitiesAfterBaseline || []
-    ).map((a) => ({
-      id: a.id,
-      timestamp: a.timestamp,
-      owner_account_id: a.owner_account_id,
-      source_account_id: a.source_account_id,
-      target_account_id: a.target_account_id,
-      amount: a.amount,
-    }));
+    ).map((a) => AccountMapper.toPersistedActivityEntity(a));
 
     const persistedActivitiesBefore: PersistedActivityEntity[] = (
       activitiesBeforeBaseline || []
-    ).map((a) => ({
-      id: a.id,
-      timestamp: a.timestamp,
-      owner_account_id: a.owner_account_id,
-      source_account_id: a.source_account_id,
-      target_account_id: a.target_account_id,
-      amount: a.amount,
-    }));
+    ).map((a) => AccountMapper.toPersistedActivityEntity(a));
 
     // 5. ベースライン残高を計算
     const baselineBalance = AccountMapper.calculateBaselineBalance(

@@ -337,8 +337,10 @@ export interface AccountAggregateEntity {
 
 **変換の責務:**
 - `AccountMapper` クラスが担当
+- Supabaseの生データ→PersistedActivityEntityの変換もMapperが担当
 
 **変換時の注意点:**
+- Supabaseの生データを`toPersistedActivityEntity()`でエンティティに変換
 - `number` → `BigInt` への変換
 - スネークケース → キャメルケースの変換
 - 集約の再構成（ベースライン残高の計算）

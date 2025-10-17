@@ -161,6 +161,21 @@ import { ActivityEntity, PersistedActivityEntity } from '../entities/ActivityEnt
 
 export class AccountMapper {
   /**
+   * Supabaseから取得した生データをPersistedActivityEntityに変換
+   * データベース層の型変換を担当
+   */
+  static toPersistedActivityEntity(dbRow: any): PersistedActivityEntity {
+    return {
+      id: dbRow.id,
+      timestamp: dbRow.timestamp,
+      owner_account_id: dbRow.owner_account_id,
+      source_account_id: dbRow.source_account_id,
+      target_account_id: dbRow.target_account_id,
+      amount: dbRow.amount,
+    };
+  }
+
+  /**
    * DBエンティティをドメインモデルに変換
    */
   static toDomain(aggregate: AccountAggregateEntity): Account {
@@ -251,7 +266,49 @@ export class AccountMapper {
 
 ### 重要なポイント
 
-#### 1. 集約の再構成
+#### 1. Supabaseの生データからエンティティへの変換
+
+```typescript
+static toPersistedActivityEntity(dbRow: any): PersistedActivityEntity {
+  return {
+    id: dbRow.id,
+    timestamp: dbRow.timestamp,
+    owner_account_id: dbRow.owner_account_id,
+    source_account_id: dbRow.source_account_id,
+    target_account_id: dbRow.target_account_id,
+    amount: dbRow.amount,
+  };
+}
+```
+
+**なぜMapperの責務なのか？**
+
+Supabaseから取得したデータを`PersistedActivityEntity`に変換する責務もMapperが持つべきです。これにより：
+
+1. **責任の明確化**: データ変換はすべてMapperが担当
+2. **保守性の向上**: データベーススキーマ変更時はMapperだけ修正すればOK
+3. **テスト容易性**: Mapperのテストで変換ロジックを網羅的にテスト可能
+4. **コードの意図が明確**: "Mapperが変換を担当する"というルールが一貫
+
+**Adapter内で直接変換しない理由：**
+
+```typescript
+// ❌ BAD: Adapter内で直接変換
+const persistedActivities = (activities || []).map((a) => ({
+  id: a.id,
+  timestamp: a.timestamp,
+  owner_account_id: a.owner_account_id,
+  source_account_id: a.source_account_id,
+  target_account_id: a.target_account_id,
+  amount: a.amount,
+}));
+
+// ✅ GOOD: Mapperに委譲
+const persistedActivities = (activities || [])
+  .map((a) => AccountMapper.toPersistedActivityEntity(a));
+```
+
+#### 2. 集約の再構成
 
 ```typescript
 static toDomain(aggregate: AccountAggregateEntity): Account {
@@ -273,7 +330,7 @@ static toDomain(aggregate: AccountAggregateEntity): Account {
 2. コレクションの変換
 3. 集約ルートの構築
 
-#### 2. 新規アクティビティのみを抽出
+#### 3. 新規アクティビティのみを抽出
 
 ```typescript
 static toActivityEntities(account: Account): ActivityEntity[] {
@@ -288,7 +345,7 @@ static toActivityEntities(account: Account): ActivityEntity[] {
 
 `getId()` が `null` のアクティビティは、まだDBに保存されていない新規アクティビティです。これらのみをエンティティに変換してDBに挿入します。
 
-#### 3. プライベートヘルパーメソッド
+#### 4. プライベートヘルパーメソッド
 
 ```typescript
 private static activityToDomain(entity: PersistedActivityEntity): Activity {
@@ -302,8 +359,9 @@ private static activityToEntity(activity: Activity): ActivityEntity {
 
 複雑な変換ロジックは、プライベートヘルパーメソッドに切り出すことで、コードの可読性が向上します。
 
-#### 4. 命名規則
+#### 5. 命名規則
 
+- `toPersistedActivityEntity()`: Supabaseの生データ → PersistedActivityEntity
 - `toDomain()`: DBエンティティ → ドメインモデル
 - `toActivityEntities()` / `toEntity()`: ドメインモデル → DBエンティティ
 - `calculateBaselineBalance()`: ヘルパーメソッド

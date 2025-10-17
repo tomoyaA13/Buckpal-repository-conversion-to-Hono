@@ -11,8 +11,26 @@ import { ActivityEntity, PersistedActivityEntity } from '../entities/ActivityEnt
  * 責務：
  * - DBエンティティからドメインモデルへの変換
  * - ドメインモデルからDBエンティティへの変換
+ * - Supabaseの生データからDBエンティティへの変換
  */
 export class AccountMapper {
+  /**
+   * Supabaseから取得した生データをPersistedActivityEntityに変換
+   * データベース層の型変換を担当
+   * 
+   * @param dbRow Supabaseから取得した行データ
+   * @returns PersistedActivityEntity
+   */
+  static toPersistedActivityEntity(dbRow: any): PersistedActivityEntity {
+    return {
+      id: dbRow.id,
+      timestamp: dbRow.timestamp,
+      owner_account_id: dbRow.owner_account_id,
+      source_account_id: dbRow.source_account_id,
+      target_account_id: dbRow.target_account_id,
+      amount: dbRow.amount,
+    };
+  }
   /**
    * DBエンティティをドメインモデルに変換
    * 
