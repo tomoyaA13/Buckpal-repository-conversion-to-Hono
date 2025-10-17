@@ -32,8 +32,11 @@ export class SupabaseAccountPersistenceAdapter
    * 
    * 処理の流れ：
    * 1. DBからアカウントとアクティビティを取得
-   * 2. エンティティに変換
-   * 3. Mapperでドメインモデルに変換
+   * 2. Mapperでドメインモデルに変換
+   * 
+   * 注意: Supabaseから取得したデータは Database['public']['Tables']['activities']['Row'][] 型ですが、
+   * TypeScriptの構造的型付けにより PersistedActivityEntity[] として扱えます。
+   * (必要なプロパティをすべて持っているため、型アサーションや変換は不要)
    */
   async loadAccount(accountId: AccountId, baselineDate: Date): Promise<Account> {
     const accountIdNum = Number(accountId.getValue());
@@ -74,29 +77,23 @@ export class SupabaseAccountPersistenceAdapter
       );
     }
 
-    // 4. Mapperを使ってエンティティを作成
-    const persistedActivitiesAfter: PersistedActivityEntity[] = (
-      activitiesAfterBaseline || []
-    ).map((a) => AccountMapper.toPersistedActivityEntity(a));
-
-    const persistedActivitiesBefore: PersistedActivityEntity[] = (
-      activitiesBeforeBaseline || []
-    ).map((a) => AccountMapper.toPersistedActivityEntity(a));
-
-    // 5. ベースライン残高を計算
+    // 4. ベースライン残高を計算
+    // 注意: Supabaseから取得したデータは Database['public']['Tables']['activities']['Row'][] 型
+    // TypeScriptの構造的型付けにより、PersistedActivityEntity[] として扱える
+    // (必要なプロパティをすべて持っているため、型アサーションや変換は不要)
     const baselineBalance = AccountMapper.calculateBaselineBalance(
-      persistedActivitiesBefore,
+      activitiesBeforeBaseline,
       accountIdNum
     );
 
-    // 6. 集約エンティティを作成
+    // 5. 集約エンティティを作成
     const aggregate: AccountAggregateEntity = {
       account: { id: accountIdNum },
-      activities: persistedActivitiesAfter,
+      activities: activitiesAfterBaseline,
       baselineBalance: Number(baselineBalance),
     };
 
-    // 7. Mapperを使ってドメインモデルに変換
+    // 6. Mapperを使ってドメインモデルに変換
     return AccountMapper.toDomain(aggregate);
   }
 

@@ -161,22 +161,10 @@ import { ActivityEntity, PersistedActivityEntity } from '../entities/ActivityEnt
 
 export class AccountMapper {
   /**
-   * Supabaseから取得した生データをPersistedActivityEntityに変換
-   * データベース層の型変換を担当
-   */
-  static toPersistedActivityEntity(dbRow: any): PersistedActivityEntity {
-    return {
-      id: dbRow.id,
-      timestamp: dbRow.timestamp,
-      owner_account_id: dbRow.owner_account_id,
-      source_account_id: dbRow.source_account_id,
-      target_account_id: dbRow.target_account_id,
-      amount: dbRow.amount,
-    };
-  }
-
-  /**
    * DBエンティティをドメインモデルに変換
+   * 
+   * 注意: PersistedActivityEntityはSupabaseの型定義から直接派生するため、
+   * Supabaseから取得したデータを変換するメソッドは不要
    */
   static toDomain(aggregate: AccountAggregateEntity): Account {
     const accountId = new AccountId(BigInt(aggregate.account.id));
@@ -266,47 +254,58 @@ export class AccountMapper {
 
 ### 重要なポイント
 
-#### 1. Supabaseの生データからエンティティへの変換
+#### 1. 単一の真実の源 + TypeScriptの構造的型付け
 
 ```typescript
-static toPersistedActivityEntity(dbRow: any): PersistedActivityEntity {
-  return {
-    id: dbRow.id,
-    timestamp: dbRow.timestamp,
-    owner_account_id: dbRow.owner_account_id,
-    source_account_id: dbRow.source_account_id,
-    target_account_id: dbRow.target_account_id,
-    amount: dbRow.amount,
-  };
-}
+// ActivityEntity.ts
+import { Database } from '../../../../../supabase/database';
+
+/**
+ * PersistedActivityEntityはSupabaseの型定義から直接派生
+ * データベーススキーマが変わったら、Supabaseの型を再生成するだけ
+ */
+export type PersistedActivityEntity = Omit<
+  Database['public']['Tables']['activities']['Row'],
+  'created_at'
+>;
 ```
 
-**なぜMapperの責務なのか？**
+**なぜSupabaseの型を直接使うのか？**
 
-Supabaseから取得したデータを`PersistedActivityEntity`に変換する責務もMapperが持つべきです。これにより：
+1. **型の二重管理を防ぐ**: 手動で同じ型を定義する必要がない
+2. **自動更新**: データベーススキーマ変更時に型が自動的に同期される
+3. **型の不一致を防ぐ**: 手動で管理するとフィールドの漏れが発生する可能性
+4. **保守性の向上**: データベース変更時の修正箴所が減る
 
-1. **責任の明確化**: データ変換はすべてMapperが担当
-2. **保守性の向上**: データベーススキーマ変更時はMapperだけ修正すればOK
-3. **テスト容易性**: Mapperのテストで変換ロジックを網羅的にテスト可能
-4. **コードの意図が明確**: "Mapperが変換を担当する"というルールが一貫
-
-**Adapter内で直接変換しない理由：**
+**TypeScriptの構造的型付け：**
 
 ```typescript
-// ❌ BAD: Adapter内で直接変換
-const persistedActivities = (activities || []).map((a) => ({
-  id: a.id,
-  timestamp: a.timestamp,
-  owner_account_id: a.owner_account_id,
-  source_account_id: a.source_account_id,
-  target_account_id: a.target_account_id,
-  amount: a.amount,
-}));
+// Supabaseから取得したデータは Row[] 型 (「created_at」を含む)
+const activities: Database['public']['Tables']['activities']['Row'][] = [...];
 
-// ✅ GOOD: Mapperに委譲
-const persistedActivities = (activities || [])
-  .map((a) => AccountMapper.toPersistedActivityEntity(a));
+// PersistedActivityEntity[] を期待する関数に直接渡せる
+const baselineBalance = AccountMapper.calculateBaselineBalance(
+  activities,  // ✅ OK！型アサーション不要
+  accountId
+);
+
+// 集約にも直接渡せる
+const aggregate: AccountAggregateEntity = {
+  account: { id: accountIdNum },
+  activities,  // ✅ OK！変換不要
+  baselineBalance: Number(baselineBalance),
+};
 ```
+
+**なぜ型アサーションや変換が不要なのか？**
+
+TypeScriptは**構造的型付け**を採用しています。つまり：
+- `Row`型は `created_at` を含む
+- `PersistedActivityEntity`型は `created_at` を含まない
+- しかし、`PersistedActivityEntity`が**必要とするすべてのプロパティ**を`Row`が持っている
+- そのため、`Row`型のデータを`PersistedActivityEntity`型に代入可能
+
+これにより、余分な`created_at`フィールドがあっても、型アサーションや変換処理なしで直接渡すことができます。
 
 #### 2. 集約の再構成
 
@@ -361,10 +360,11 @@ private static activityToEntity(activity: Activity): ActivityEntity {
 
 #### 5. 命名規則
 
-- `toPersistedActivityEntity()`: Supabaseの生データ → PersistedActivityEntity
 - `toDomain()`: DBエンティティ → ドメインモデル
 - `toActivityEntities()` / `toEntity()`: ドメインモデル → DBエンティティ
 - `calculateBaselineBalance()`: ヘルパーメソッド
+
+**注意**: `toPersistedActivityEntity()`は不要。PersistedActivityEntityはSupabaseの型定義から直接派生するため、変換メソッドは必要ない。
 
 ---
 

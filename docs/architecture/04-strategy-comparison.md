@@ -325,19 +325,9 @@ class SendMoneyMapper {
 }
 
 // 永続化層のマッパー
+// 注意: PersistedActivityEntityはSupabaseの型定義から直接派生するため、
+// Supabaseの生データを変換するメソッドは不要
 class AccountMapper {
-  static toPersistedActivityEntity(dbRow: any): PersistedActivityEntity {
-    // Supabaseの生データ → PersistedActivityEntity
-    return {
-      id: dbRow.id,
-      timestamp: dbRow.timestamp,
-      owner_account_id: dbRow.owner_account_id,
-      source_account_id: dbRow.source_account_id,
-      target_account_id: dbRow.target_account_id,
-      amount: dbRow.amount,
-    };
-  }
-
   static toDomain(aggregate: AccountAggregateEntity): Account {
     // エンティティ → ドメインモデル
   }
