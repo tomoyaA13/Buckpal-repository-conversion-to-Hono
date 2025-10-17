@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { container } from 'tsyringe';
+import { createClient } from '@supabase/supabase-js';
 import { Money } from '../application/domain/model/Money';
 import { SendMoneyDomainService } from '../application/domain/service/SendMoneyDomainService';
 import { SendMoneyApplicationService } from '../application/service/SendMoneyApplicationService';
@@ -12,17 +13,30 @@ import { UpdateAccountStatePortToken } from '../application/port/out/UpdateAccou
 import { AccountLockToken } from '../application/port/out/AccountLock';
 import { SendMoneyUseCaseToken } from '../application/port/in/SendMoneyUseCase';
 import type { CloudflareBindings } from '../types/bindings';
+import { DatabaseConfig, DatabaseConfigToken, SupabaseClientToken, TypedSupabaseClient } from './types';
+import {Database} from "../../supabase/database";
+
+// 初期化済みフラグ
+let isInitialized = false;
 
 /**
  * DIコンテナの初期化と依存関係の登録
+ * 起動時に一度だけ実行される
+ *
  * @param env Cloudflare Workers の環境変数
  */
 export function setupContainer(env: CloudflareBindings): void {
-    // コンテナをクリア（リクエストごとに新しいコンテナを使用）
-    container.clearInstances();
+    // 既に初期化済みなら何もしない
+    if (isInitialized) {
+        return;
+    }
+
+    console.log('🚀 Initializing DI container...');
 
     // ===== 設定オブジェクトの登録 =====
-    const transferThreshold = Money.of(1_000_000); // 100万円が上限
+
+    // 送金上限の設定
+    const transferThreshold = Money.of(1_000_000);
     const properties = new MoneyTransferProperties(transferThreshold);
 
     container.register(MoneyTransferPropertiesToken, {
@@ -33,21 +47,52 @@ export function setupContainer(env: CloudflareBindings): void {
     const useSupabase = env.USE_SUPABASE === 'true';
 
     if (useSupabase) {
-        // Supabase Adapter を使用
-        const supabaseAdapter = new SupabaseAccountPersistenceAdapter(
-            env.SUPABASE_URL,
-            env.SUPABASE_PUBLISHABLE_KEY
+        console.log('📦 Using Supabase adapter');
+
+        // データベース設定を登録
+        const dbConfig: DatabaseConfig = {
+            url: env.SUPABASE_URL,
+            key: env.SUPABASE_PUBLISHABLE_KEY,
+        };
+
+        container.register(DatabaseConfigToken, {
+            useValue: dbConfig,
+        });
+
+        // SupabaseClient をシングルトンとして登録
+        const supabaseClient = createClient<Database>(dbConfig.url, dbConfig.key, {
+            auth: {
+                persistSession: false, // Cloudflare Workers では不要
+            },
+            // その他のグローバル設定をここで一元管理
+            global: {
+                headers: {
+                    'x-application-name': 'buckpal',
+                },
+            },
+        });
+
+        container.register<TypedSupabaseClient>(SupabaseClientToken, {
+            useValue: supabaseClient,
+        });
+
+        // Adapter をシングルトンとして登録
+        container.registerSingleton(
+            SupabaseAccountPersistenceAdapter,
+            SupabaseAccountPersistenceAdapter
         );
 
+        // 両方のポートで同じインスタンスを使用
         container.register(LoadAccountPortToken, {
-            useValue: supabaseAdapter,
+            useToken: SupabaseAccountPersistenceAdapter,
         });
 
         container.register(UpdateAccountStatePortToken, {
-            useValue: supabaseAdapter,
+            useToken: SupabaseAccountPersistenceAdapter,
         });
     } else {
-        // InMemory Adapter を使用
+        console.log('💾 Using InMemory adapter');
+
         container.registerSingleton(
             InMemoryAccountPersistenceAdapter,
             InMemoryAccountPersistenceAdapter
@@ -75,7 +120,17 @@ export function setupContainer(env: CloudflareBindings): void {
         useClass: SendMoneyApplicationService,
     });
 
+    isInitialized = true;
     console.log(`✅ DI container initialized (Supabase: ${useSupabase})`);
+}
+
+/**
+ * コンテナをリセット（主にテスト用）
+ */
+export function resetContainer(): void {
+    container.clearInstances();
+    isInitialized = false;
+    console.log('🔄 DI container reset');
 }
 
 export { container };

@@ -1,27 +1,29 @@
-import {injectable} from 'tsyringe';
-import {createClient, SupabaseClient} from '@supabase/supabase-js';
+import {inject, injectable} from 'tsyringe';
 import {LoadAccountPort} from '../../../application/port/out/LoadAccountPort';
 import {UpdateAccountStatePort} from '../../../application/port/out/UpdateAccountStatePort';
 import {Account} from '../../../application/domain/model/Account';
 import {AccountId, Activity, ActivityId} from '../../../application/domain/model/Activity';
 import {ActivityWindow} from '../../../application/domain/model/ActivityWindow';
 import {Money} from '../../../application/domain/model/Money';
-import {Database} from "../../../../supabase/database";
+import {SupabaseClientToken, TypedSupabaseClient} from '../../../config/types';
 
 /**
  * Supabaseを使用したアカウント永続化アダプター
+ *
+ * SupabaseClientはDIコンテナから注入される
+ * クライアントの生成や接続管理の責任を持たない
  */
 @injectable()
 export class SupabaseAccountPersistenceAdapter
     implements LoadAccountPort, UpdateAccountStatePort {
-    private supabase: SupabaseClient<Database>;
 
-    constructor(supabaseUrl: string, supabaseKey: string) {
-        this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
+    constructor(
+        @inject(SupabaseClientToken) private readonly supabase: TypedSupabaseClient
+    ) {
+        console.log('✅ SupabaseAccountPersistenceAdapter initialized');
     }
 
     async loadAccount(accountId: AccountId, baselineDate: Date): Promise<Account> {
-        // BigIntをnumberに変換
         const accountIdNum = Number(accountId.getValue());
 
         // アカウントの存在確認
