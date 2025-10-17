@@ -1,4 +1,4 @@
-import {injectable} from 'tsyringe';
+import {inject, injectable} from 'tsyringe';
 import {createClient, SupabaseClient} from '@supabase/supabase-js';
 import {LoadAccountPort} from '../../../application/port/out/LoadAccountPort';
 import {UpdateAccountStatePort} from '../../../application/port/out/UpdateAccountStatePort';
@@ -7,6 +7,7 @@ import {AccountId, Activity, ActivityId} from '../../../application/domain/model
 import {ActivityWindow} from '../../../application/domain/model/ActivityWindow';
 import {Money} from '../../../application/domain/model/Money';
 import {Database} from "../../../../supabase/database";
+import {DatabaseConfig, DatabaseConfigToken} from "../../../config/types";
 
 /**
  * Supabaseを使用したアカウント永続化アダプター
@@ -16,8 +17,12 @@ export class SupabaseAccountPersistenceAdapter
     implements LoadAccountPort, UpdateAccountStatePort {
     private supabase: SupabaseClient<Database>;
 
-    constructor(supabaseUrl: string, supabaseKey: string) {
-        this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
+    // @inject デコレーターでDIコンテナから設定を注入
+    constructor(
+        @inject(DatabaseConfigToken) config: DatabaseConfig
+    ) {
+        this.supabase = createClient<Database>(config.url, config.key);
+        console.log('✅ SupabaseAccountPersistenceAdapter initialized');
     }
 
     async loadAccount(accountId: AccountId, baselineDate: Date): Promise<Account> {

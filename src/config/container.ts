@@ -1,18 +1,21 @@
-// src/config/container.ts
 import 'reflect-metadata';
-import { container } from 'tsyringe';
-import { Money } from '../application/domain/model/Money';
-import { SendMoneyDomainService } from '../application/domain/service/SendMoneyDomainService';
-import { SendMoneyApplicationService } from '../application/service/SendMoneyApplicationService';
-import { MoneyTransferProperties, MoneyTransferPropertiesToken } from '../application/domain/service/MoneyTransferProperties';
-import { InMemoryAccountPersistenceAdapter } from '../adapter/out/persistence/InMemoryAccountPersistenceAdapter';
-import { SupabaseAccountPersistenceAdapter } from '../adapter/out/persistence/SupabaseAccountPersistenceAdapter';
-import { NoOpAccountLock } from '../adapter/out/persistence/NoOpAccountLock';
-import { LoadAccountPortToken } from '../application/port/out/LoadAccountPort';
-import { UpdateAccountStatePortToken } from '../application/port/out/UpdateAccountStatePort';
-import { AccountLockToken } from '../application/port/out/AccountLock';
-import { SendMoneyUseCaseToken } from '../application/port/in/SendMoneyUseCase';
-import type { CloudflareBindings } from '../types/bindings';
+import {container} from 'tsyringe';
+import {Money} from '../application/domain/model/Money';
+import {SendMoneyDomainService} from '../application/domain/service/SendMoneyDomainService';
+import {SendMoneyApplicationService} from '../application/service/SendMoneyApplicationService';
+import {
+    MoneyTransferProperties,
+    MoneyTransferPropertiesToken
+} from '../application/domain/service/MoneyTransferProperties';
+import {InMemoryAccountPersistenceAdapter} from '../adapter/out/persistence/InMemoryAccountPersistenceAdapter';
+import {SupabaseAccountPersistenceAdapter} from '../adapter/out/persistence/SupabaseAccountPersistenceAdapter';
+import {NoOpAccountLock} from '../adapter/out/persistence/NoOpAccountLock';
+import {LoadAccountPortToken} from '../application/port/out/LoadAccountPort';
+import {UpdateAccountStatePortToken} from '../application/port/out/UpdateAccountStatePort';
+import {AccountLockToken} from '../application/port/out/AccountLock';
+import {SendMoneyUseCaseToken} from '../application/port/in/SendMoneyUseCase';
+import type {CloudflareBindings} from '../types/bindings';
+import {DatabaseConfig, DatabaseConfigToken} from './types';
 
 // 初期化済みフラグ
 let isInitialized = false;
@@ -32,12 +35,25 @@ export function setupContainer(env: CloudflareBindings): void {
     console.log('🚀 Initializing DI container...');
 
     // ===== 設定オブジェクトの登録 =====
-    const transferThreshold = Money.of(1_000_000); // 100万円が上限
+
+    // 送金上限の設定
+    const transferThreshold = Money.of(1_000_000);
     const properties = new MoneyTransferProperties(transferThreshold);
 
     container.register(MoneyTransferPropertiesToken, {
         useValue: properties,
     });
+
+    // データベース設定を登録
+    const dbConfig: DatabaseConfig = {
+        url: env.SUPABASE_URL,
+        key: env.SUPABASE_PUBLISHABLE_KEY,
+    };
+
+    container.register(
+        DatabaseConfigToken,
+        {useValue: dbConfig,}
+    );
 
     // ===== 出力アダプター（永続化層）の登録 =====
     const useSupabase = env.USE_SUPABASE === 'true';
@@ -45,24 +61,23 @@ export function setupContainer(env: CloudflareBindings): void {
     if (useSupabase) {
         console.log('📦 Using Supabase adapter');
 
-        // Supabase Adapter を使用（シングルトン）
-        const supabaseAdapter = new SupabaseAccountPersistenceAdapter(
-            env.SUPABASE_URL,
-            env.SUPABASE_PUBLISHABLE_KEY
+        // SupabaseAccountPersistenceAdapter をシングルトンとして登録
+        container.registerSingleton(
+            SupabaseAccountPersistenceAdapter,
+            SupabaseAccountPersistenceAdapter
         );
 
-        // 同じインスタンスを両方のポートで使用
+        // 両方のポートで同じインスタンスを使用
         container.register(LoadAccountPortToken, {
-            useValue: supabaseAdapter,
+            useToken: SupabaseAccountPersistenceAdapter,
         });
 
         container.register(UpdateAccountStatePortToken, {
-            useValue: supabaseAdapter,
+            useToken: SupabaseAccountPersistenceAdapter,
         });
     } else {
         console.log('💾 Using InMemory adapter');
 
-        // InMemory Adapter を使用（シングルトン）
         container.registerSingleton(
             InMemoryAccountPersistenceAdapter,
             InMemoryAccountPersistenceAdapter
@@ -103,4 +118,4 @@ export function resetContainer(): void {
     console.log('🔄 DI container reset');
 }
 
-export { container };
+export {container};
