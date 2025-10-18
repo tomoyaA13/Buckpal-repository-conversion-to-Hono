@@ -130,19 +130,9 @@ export class SendMoneyMapper {
 // src/adapter/out/persistence/mappers/AccountMapper.ts
 
 export class AccountMapper {
-  // Supabaseの生データ → PersistedActivityEntity
-  static toPersistedActivityEntity(dbRow: any): PersistedActivityEntity {
-    return {
-      id: dbRow.id,
-      timestamp: dbRow.timestamp,
-      owner_account_id: dbRow.owner_account_id,
-      source_account_id: dbRow.source_account_id,
-      target_account_id: dbRow.target_account_id,
-      amount: dbRow.amount,
-    };
-  }
-
   // DBエンティティ → ドメインモデル
+  // 注意: PersistedActivityEntityはSupabaseの型定義から直接派生するため、
+  // Supabaseの生データを変換するメソッドは不要
   static toDomain(aggregate: AccountAggregateEntity): Account {
     const accountId = new AccountId(BigInt(aggregate.account.id));
     const baselineBalance = Money.of(BigInt(aggregate.baselineBalance));
