@@ -5,7 +5,10 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "test": "echo \"Tests coming soon\""
+    "test": "echo \"Tests coming soon\"",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "arch:validate": "eslint src --max-warnings 0"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.4",
@@ -18,6 +21,10 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@hono/eslint-config": "^2.0.3",
+    "eslint": "^9.38.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "supabase": "^2.48.3",
     "wrangler": "^4.4.0"
   }
