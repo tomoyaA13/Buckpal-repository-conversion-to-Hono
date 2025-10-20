@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import { container } from 'tsyringe';
-import { SendMoneyUseCase, SendMoneyUseCaseToken } from '../../../application/port/in/SendMoneyUseCase';
-import { SendMoneyWebRequestSchema } from './models/SendMoneyWebRequest';
-import { SendMoneyMapper } from './mappers/SendMoneyMapper';
 import { ThresholdExceededException } from '../../../application/domain/service/ThresholdExceededException';
+import type { SendMoneyUseCase} from '../../../application/port/in/SendMoneyUseCase';
+import { SendMoneyUseCaseToken } from '../../../application/port/in/SendMoneyUseCase';
+import { SendMoneyMapper } from './mappers/SendMoneyMapper';
+import { SendMoneyWebRequestSchema } from './models/SendMoneyWebRequest';
 
 /**
  * 送金コントローラー（双方向モデル変換版）
@@ -40,7 +41,7 @@ sendMoneyRouter.post('/accounts/send', async (c) => {
         SendMoneyMapper.toErrorResponse(
           'Invalid request data',
           'VALIDATION_ERROR',
-          { errors: validationResult.error.errors }
+          { errors: validationResult.error.issues }
         ),
         400
       );
