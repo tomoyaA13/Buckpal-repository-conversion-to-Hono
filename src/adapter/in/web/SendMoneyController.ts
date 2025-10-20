@@ -4,8 +4,8 @@ import {container} from 'tsyringe';
 import {ThresholdExceededException} from '../../../application/domain/service/ThresholdExceededException';
 import type {SendMoneyUseCase} from '../../../application/port/in/SendMoneyUseCase';
 import {SendMoneyUseCaseToken} from '../../../application/port/in/SendMoneyUseCase';
-import {SendMoneyMapper} from './mappers/SendMoneyMapper';
-import {SendMoneyWebRequestSchema, SendMoneyParamSchema} from './models/SendMoneyWebRequest';
+import {toCommand, toErrorResponse, toSuccessResponse} from './mappers/SendMoneyMapper';
+import {SendMoneyParamSchema, SendMoneyWebRequestSchema} from './models/SendMoneyWebRequest';
 
 /**
  * 送金コントローラー（双方向モデル変換版）
@@ -39,7 +39,7 @@ sendMoneyRouter.post(
             const webRequest = c.req.valid('json');
 
             // 2. Web層のモデルをドメイン層のコマンドに変換
-            const command = SendMoneyMapper.toCommand(webRequest);
+            const command = toCommand(webRequest);
 
             // 3. DIコンテナからユースケースを取得して実行
             const sendMoneyUseCase = container.resolve<SendMoneyUseCase>(
@@ -49,10 +49,10 @@ sendMoneyRouter.post(
 
             // 4. 結果をWeb層のレスポンスに変換
             if (success) {
-                return c.json(SendMoneyMapper.toSuccessResponse(webRequest));
+                return c.json(toSuccessResponse(webRequest));
             } else {
                 return c.json(
-                    SendMoneyMapper.toErrorResponse(
+                    toErrorResponse(
                         'Money transfer failed - insufficient balance',
                         'INSUFFICIENT_BALANCE'
                     ),
@@ -63,7 +63,7 @@ sendMoneyRouter.post(
             // エラーハンドリング
             if (error instanceof ThresholdExceededException) {
                 return c.json(
-                    SendMoneyMapper.toErrorResponse(
+                    toErrorResponse(
                         error.message,
                         'THRESHOLD_EXCEEDED',
                         {
@@ -77,7 +77,7 @@ sendMoneyRouter.post(
 
             if (error instanceof Error) {
                 return c.json(
-                    SendMoneyMapper.toErrorResponse(
+                    toErrorResponse(
                         error.message,
                         'INTERNAL_ERROR'
                     ),
@@ -86,7 +86,7 @@ sendMoneyRouter.post(
             }
 
             return c.json(
-                SendMoneyMapper.toErrorResponse(
+                toErrorResponse(
                     'An unknown error occurred',
                     'UNKNOWN_ERROR'
                 ),
@@ -108,17 +108,17 @@ sendMoneyRouter.post(
         const webRequest = c.req.valid('param');
 
         try {
-            const command = SendMoneyMapper.toCommand(webRequest);
+            const command = toCommand(webRequest);
             const sendMoneyUseCase = container.resolve<SendMoneyUseCase>(
                 SendMoneyUseCaseToken
             );
             const success = await sendMoneyUseCase.sendMoney(command);
 
             if (success) {
-                return c.json(SendMoneyMapper.toSuccessResponse(webRequest));
+                return c.json(toSuccessResponse(webRequest));
             } else {
                 return c.json(
-                    SendMoneyMapper.toErrorResponse(
+                    toErrorResponse(
                         'Money transfer failed - insufficient balance',
                         'INSUFFICIENT_BALANCE'
                     ),
@@ -128,7 +128,7 @@ sendMoneyRouter.post(
         } catch (error) {
             if (error instanceof ThresholdExceededException) {
                 return c.json(
-                    SendMoneyMapper.toErrorResponse(
+                    toErrorResponse(
                         error.message,
                         'THRESHOLD_EXCEEDED',
                         {
@@ -142,13 +142,13 @@ sendMoneyRouter.post(
 
             if (error instanceof Error) {
                 return c.json(
-                    SendMoneyMapper.toErrorResponse(error.message, 'INTERNAL_ERROR'),
+                    toErrorResponse(error.message, 'INTERNAL_ERROR'),
                     500
                 );
             }
 
             return c.json(
-                SendMoneyMapper.toErrorResponse(
+                toErrorResponse(
                     'An unknown error occurred',
                     'UNKNOWN_ERROR'
                 ),
