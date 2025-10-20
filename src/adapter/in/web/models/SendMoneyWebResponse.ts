@@ -12,6 +12,6 @@ export interface SendMoneyWebResponse {
   };
   error?: {
     code: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   };
 }
