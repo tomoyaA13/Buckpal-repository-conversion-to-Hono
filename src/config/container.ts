@@ -1,20 +1,21 @@
 import 'reflect-metadata';
-import { container } from 'tsyringe';
 import { createClient } from '@supabase/supabase-js';
-import { Money } from '../application/domain/model/Money';
-import { SendMoneyDomainService } from '../application/domain/service/SendMoneyDomainService';
-import { SendMoneyApplicationService } from '../application/service/SendMoneyApplicationService';
-import { MoneyTransferProperties, MoneyTransferPropertiesToken } from '../application/domain/service/MoneyTransferProperties';
+import { container } from 'tsyringe';
+import type {Database} from "../../supabase/database";
 import { InMemoryAccountPersistenceAdapter } from '../adapter/out/persistence/InMemoryAccountPersistenceAdapter';
-import { SupabaseAccountPersistenceAdapter } from '../adapter/out/persistence/SupabaseAccountPersistenceAdapter';
 import { NoOpAccountLock } from '../adapter/out/persistence/NoOpAccountLock';
+import { SupabaseAccountPersistenceAdapter } from '../adapter/out/persistence/SupabaseAccountPersistenceAdapter';
+import { Money } from '../application/domain/model/Money';
+import { MoneyTransferProperties, MoneyTransferPropertiesToken } from '../application/domain/service/MoneyTransferProperties';
+import { SendMoneyDomainService } from '../application/domain/service/SendMoneyDomainService';
+import { SendMoneyUseCaseToken } from '../application/port/in/SendMoneyUseCase';
+import { AccountLockToken } from '../application/port/out/AccountLock';
 import { LoadAccountPortToken } from '../application/port/out/LoadAccountPort';
 import { UpdateAccountStatePortToken } from '../application/port/out/UpdateAccountStatePort';
-import { AccountLockToken } from '../application/port/out/AccountLock';
-import { SendMoneyUseCaseToken } from '../application/port/in/SendMoneyUseCase';
+import { SendMoneyApplicationService } from '../application/service/SendMoneyApplicationService';
 import type { CloudflareBindings } from '../types/bindings';
-import { DatabaseConfig, DatabaseConfigToken, SupabaseClientToken, TypedSupabaseClient } from './types';
-import {Database} from "../../supabase/database";
+import type { DatabaseConfig, TypedSupabaseClient } from './types';
+import { DatabaseConfigToken, SupabaseClientToken } from './types';
 
 // 初期化済みフラグ
 let isInitialized = false;
@@ -121,7 +122,7 @@ export function setupContainer(env: CloudflareBindings): void {
     });
 
     isInitialized = true;
-    console.log(`✅ DI container initialized (Supabase: ${useSupabase})`);
+    console.log(`✅ DI container initialized (Supabase: ${useSupabase ? 'enabled' : 'disabled'})`);
 }
 
 /**
