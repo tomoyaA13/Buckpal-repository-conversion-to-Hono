@@ -1,6 +1,6 @@
 import { injectable } from 'tsyringe';
-import { AccountLock as AccountLockInterface } from '../../../application/port/out/AccountLock';
 import { AccountId } from '../../../application/domain/model/Activity';
+import { AccountLock as AccountLockInterface } from '../../../application/port/out/AccountLock';
 
 /**
  * アカウントロックのNo-Op実装
