@@ -1,6 +1,7 @@
-import {AccountId, Activity} from './Activity';
-import {ActivityWindow} from './ActivityWindow';
-import {Money} from './Money';
+import type {AccountId} from './Activity';
+import { Activity} from './Activity';
+import type {ActivityWindow} from './ActivityWindow';
+import type {Money} from './Money';
 
 /**
  * お金を保持するアカウント
