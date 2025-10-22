@@ -36,7 +36,7 @@
 │  特徴: DBスキーマと1対1対応、プリミティブ型                    │
 │                                                              │
 │  例:                                                         │
-│  - AccountEntity, ActivityEntity                              │
+│  - PersistedAccountRecord, ActivityRecord                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -251,42 +251,42 @@ export class Account {
 
 ### 実装例
 
-#### ActivityEntity.ts
+#### ActivityRecord.ts
 
 ```typescript
 import { Database } from '../../../../../supabase/database';
 
 /**
- * データベースに挿入するアクティビティの型
+ * データベースに挿入するアクティビティレコード
  * Supabaseの型定義から直接派生（単一の真実の源）
  * 
  * データベーススキーマを変更した場合：
  * 1. Supabaseの型を再生成: `supabase gen types typescript --local > supabase/database.ts`
  * 2. この型は自動的に更新される（手動変更不要）
  */
-export type ActivityEntity = Database['public']['Tables']['activities']['Insert'];
+export type ActivityRecord = Database['public']['Tables']['activities']['Insert'];
 
 /**
- * データベースから取得したアクティビティの型
+ * データベースから取得したアクティビティレコード
  * Supabaseの型定義から直接派生（単一の真実の源）
  * 
  * created_atフィールドはアプリケーションで使用しないため除外
  */
-export type PersistedActivityEntity = Omit<
+export type PersistedActivityRecord = Omit<
   Database['public']['Tables']['activities']['Row'],
   'created_at'
 >;
 ```
 
-#### AccountEntity.ts
+#### AccountRecord.ts
 
 ```typescript
-import { PersistedActivityEntity } from './ActivityEntity';
+import { PersistedActivityRecord } from './ActivityRecord';
 
 /**
- * データベースのaccountsテーブルを表現するエンティティ
+ * データベースから取得したアカウントレコード
  */
-export interface AccountEntity {
+export interface PersistedAccountRecord {
   id: number;
 }
 
@@ -294,9 +294,9 @@ export interface AccountEntity {
  * アカウントの完全な状態（アクティビティを含む）
  * 集約を表現するための構造
  */
-export interface AccountAggregateEntity {
-  account: AccountEntity;
-  activities: PersistedActivityEntity[];
+export interface AccountAggregateRecord {
+  account: PersistedAccountRecord;
+  activities: PersistedActivityRecord[];
   baselineBalance: number; // 計算されたベースライン残高
 }
 ```
@@ -332,18 +332,18 @@ export interface AccountAggregateEntity {
 - `string` → `BigInt` への変換（数値の精度に注意）
 - プリミティブ型 → 値オブジェクト（バリデーションを含む）
 
-### ドメインモデル ↔ 永続化層のエンティティ
+### ドメインモデル ↔ 永続化層のレコード
 
 **変換の方向:**
-- `AccountAggregateEntity` → `Account` (読み込み時)
-- `Account` → `ActivityEntity[]` (書き込み時)
+- `AccountAggregateRecord` → `Account` (読み込み時)
+- `Account` → `ActivityRecord[]` (書き込み時)
 
 **変換の責務:**
 - `AccountMapper` クラスが担当
 - `PersistedActivityEntity`はSupabaseの型定義から直接派生するため、型アサーションや変換メソッドは不要
 
 **変換時の注意点:**
-- TypeScriptの構造的型付けにより、Supabaseから取得したデータを直接使用可能
+- TypeScriptの構造的型付けにより、Supabaseから取得したデータを直接PersistedActivityRecord型として使用可能
 - `number` → `BigInt` への変換
 - スネークケース → キャメルケースの変換
 - 集約の再構成（ベースライン残高の計算）
@@ -382,7 +382,7 @@ export interface AccountAggregateEntity {
 |----|--------|------|------|
 | **Web層** | `SendMoneyWebRequest/Response` | HTTPとの入出力 | プリミティブ型、JSONシリアライズ可能 |
 | **アプリケーション層** | `Account`, `Activity`, `Money` | ビジネスロジック | 値オブジェクト、不変性、ビジネスルール |
-| **永続化層** | `AccountEntity`, `ActivityEntity` | DBとの入出力 | DBスキーマと1対1対応、スネークケース |
+| **永続化層** | `PersistedAccountRecord`, `ActivityRecord` | DBとの入出力 | DBスキーマと1対1対応、スネークケース |
 
 ### 各層の責務の分離
 
