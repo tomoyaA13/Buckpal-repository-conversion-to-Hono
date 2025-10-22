@@ -1,4 +1,4 @@
-import { PersistedActivityEntity } from './ActivityEntity';
+import type { PersistedActivityEntity } from './ActivityEntity';
 
 /**
  * データベースのaccountsテーブルを表現するエンティティ
