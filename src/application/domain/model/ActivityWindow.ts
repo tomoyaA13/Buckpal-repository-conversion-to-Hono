@@ -1,4 +1,4 @@
-import {AccountId, Activity} from './Activity';
+import type {AccountId, Activity} from './Activity';
 import {Money} from './Money';
 
 /**
