@@ -10,11 +10,11 @@ import { AccountLock as AccountLockInterface } from '../../../application/port/o
  */
 @injectable()
 export class NoOpAccountLock implements AccountLockInterface {
-  lockAccount(accountId: AccountId): void {
+  lockAccount(_accountId: AccountId): void {
     // 何もしない
   }
 
-  releaseAccount(accountId: AccountId): void {
+  releaseAccount(_accountId: AccountId): void {
     // 何もしない
   }
 }

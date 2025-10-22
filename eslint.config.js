@@ -1,4 +1,3 @@
-// eslint.config.js
 import {defineConfig} from 'eslint/config';
 import honoConfig from '@hono/eslint-config';
 import importPlugin from 'eslint-plugin-import';
@@ -141,7 +140,15 @@ export default defineConfig([
             }],
 
             // 自己インポートの禁止
-            'import/no-self-import': 'error'
+            'import/no-self-import': 'error',
+
+            // 未使用変数のルール
+            // アンダースコアで始まる変数・パラメータは警告しない
+            // （インターフェース実装で必要だが使わないパラメータ用）
+            '@typescript-eslint/no-unused-vars': ['warn', {
+                argsIgnorePattern: '^_',
+                varsIgnorePattern: '^_'
+            }]
         }
     }
 ]);
