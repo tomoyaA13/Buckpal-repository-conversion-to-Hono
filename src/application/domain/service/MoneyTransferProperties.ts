@@ -1,4 +1,4 @@
-import { Money } from '../model/Money';
+import type { Money } from '../model/Money';
 
 /**
  * 送金ユースケースの設定プロパティ
