@@ -1,4 +1,4 @@
-import { Database } from '../../../../../supabase/database';
+import type { Database } from '../../../../../supabase/database';
 
 /**
  * データベースに挿入するアクティビティの型
