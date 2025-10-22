@@ -1,4 +1,4 @@
-import {Account} from '../../domain/model/Account';
+import type {Account} from '../../domain/model/Account';
 
 // 依存関係の向き(永続化層がアプリケーション層に依存する)
 // 永続化層（adapter/out/persistence）

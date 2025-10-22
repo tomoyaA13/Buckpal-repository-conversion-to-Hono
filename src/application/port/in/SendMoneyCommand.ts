@@ -40,7 +40,7 @@ export class SendMoneyCommand {
 
     if (!result.success) {
       throw new Error(
-        `Invalid SendMoneyCommand: ${result.error.errors.map((e) => e.message).join(', ')}`
+        `Invalid SendMoneyCommand: ${result.error.issues.map((e) => e.message).join(', ')}`
       );
     }
   }

@@ -1,4 +1,4 @@
-import { AccountId } from '../../domain/model/Activity';
+import type { AccountId } from '../../domain/model/Activity';
 
 /**
  * アカウントのロック/アンロックを行う出力ポート

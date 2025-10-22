@@ -1,4 +1,4 @@
-import { Money } from '../model/Money';
+import type { Money } from '../model/Money';
 
 /**
  * 送金限度額を超えた場合にスローされる例外

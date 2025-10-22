@@ -1,4 +1,4 @@
-import {SendMoneyCommand} from './SendMoneyCommand';
+import type {SendMoneyCommand} from './SendMoneyCommand';
 
 /**
  * 送金ユースケースのインターフェース（入力ポート）

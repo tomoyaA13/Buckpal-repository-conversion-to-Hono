@@ -1,5 +1,5 @@
 import {injectable} from 'tsyringe';
-import {Account, AccountId} from '../model/Account';
+import {Account} from '../model/Account';
 import {Money} from '../model/Money';
 
 /**
