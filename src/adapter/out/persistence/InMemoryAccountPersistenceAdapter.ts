@@ -1,10 +1,10 @@
 import { injectable } from 'tsyringe';
-import { LoadAccountPort } from '../../../application/port/out/LoadAccountPort';
-import { UpdateAccountStatePort } from '../../../application/port/out/UpdateAccountStatePort';
 import { Account } from '../../../application/domain/model/Account';
 import { AccountId, Activity, ActivityId } from '../../../application/domain/model/Activity';
 import { ActivityWindow } from '../../../application/domain/model/ActivityWindow';
 import { Money } from '../../../application/domain/model/Money';
+import { LoadAccountPort } from '../../../application/port/out/LoadAccountPort';
+import { UpdateAccountStatePort } from '../../../application/port/out/UpdateAccountStatePort';
 
 /**
  * アカウントデータ（インメモリストア用）
@@ -31,9 +31,9 @@ interface ActivityData {
  */
 @injectable()
 export class InMemoryAccountPersistenceAdapter
-  implements LoadAccountPort, UpdateAccountStatePort
+    implements LoadAccountPort, UpdateAccountStatePort
 {
-  private accounts: Map<bigint, AccountData> = new Map();
+  private accounts = new Map<bigint, AccountData>();
   private activities: ActivityData[] = [];
   private nextActivityId = 1n;
 
@@ -77,70 +77,72 @@ export class InMemoryAccountPersistenceAdapter
   /**
    * アカウントをロード
    */
-  async loadAccount(accountId: AccountId, baselineDate: Date): Promise<Account> {
+  loadAccount(accountId: AccountId, baselineDate: Date): Promise<Account> {
     const accountData = this.accounts.get(accountId.getValue());
     if (!accountData) {
-      throw new Error(`Account not found: ${accountId.getValue()}`);
+      throw new Error(`Account not found: ${accountId.getValue().toString()}`);
     }
 
     // baselineDate以降のアクティビティを取得
     const activitiesAfterBaseline = this.activities.filter(
-      (a) =>
-        a.ownerAccountId === accountId.getValue() &&
-        a.timestamp >= baselineDate
+        (a) =>
+            a.ownerAccountId === accountId.getValue() &&
+            a.timestamp >= baselineDate
     );
 
     // baselineDate以前の残高を計算
     const withdrawalBalance = this.activities
-      .filter(
-        (a) =>
-          a.sourceAccountId === accountId.getValue() &&
-          a.ownerAccountId === accountId.getValue() &&
-          a.timestamp < baselineDate
-      )
-      .reduce((sum, a) => sum + a.amount, 0n);
+        .filter(
+            (a) =>
+                a.sourceAccountId === accountId.getValue() &&
+                a.ownerAccountId === accountId.getValue() &&
+                a.timestamp < baselineDate
+        )
+        .reduce((sum, a) => sum + a.amount, 0n);
 
     const depositBalance = this.activities
-      .filter(
-        (a) =>
-          a.targetAccountId === accountId.getValue() &&
-          a.ownerAccountId === accountId.getValue() &&
-          a.timestamp < baselineDate
-      )
-      .reduce((sum, a) => sum + a.amount, 0n);
+        .filter(
+            (a) =>
+                a.targetAccountId === accountId.getValue() &&
+                a.ownerAccountId === accountId.getValue() &&
+                a.timestamp < baselineDate
+        )
+        .reduce((sum, a) => sum + a.amount, 0n);
 
     const baselineBalance = Money.subtract(
-      Money.of(depositBalance),
-      Money.of(withdrawalBalance)
+        Money.of(depositBalance),
+        Money.of(withdrawalBalance)
     );
 
     // アクティビティをドメインモデルに変換
     const activities = activitiesAfterBaseline.map((a) =>
-      Activity.withId(
-        new ActivityId(a.id),
-        new AccountId(a.ownerAccountId),
-        new AccountId(a.sourceAccountId),
-        new AccountId(a.targetAccountId),
-        a.timestamp,
-        Money.of(a.amount)
-      )
+        Activity.withId(
+            new ActivityId(a.id),
+            new AccountId(a.ownerAccountId),
+            new AccountId(a.sourceAccountId),
+            new AccountId(a.targetAccountId),
+            a.timestamp,
+            Money.of(a.amount)
+        )
     );
 
-    return Account.withId(
-      accountId,
-      baselineBalance,
-      new ActivityWindow(...activities)
+    const account = Account.withId(
+        accountId,
+        baselineBalance,
+        new ActivityWindow(...activities)
     );
+
+    return Promise.resolve(account);
   }
 
   /**
    * アカウントのアクティビティを更新
    */
-  async updateActivities(account: Account): Promise<void> {
+  updateActivities(account: Account): Promise<void> {
     const newActivities = account
-      .getActivityWindow()
-      .getActivities()
-      .filter((activity) => !activity.getId());
+        .getActivityWindow()
+        .getActivities()
+        .filter((activity) => !activity.getId());
 
     for (const activity of newActivities) {
       this.activities.push({
@@ -152,5 +154,7 @@ export class InMemoryAccountPersistenceAdapter
         amount: activity.getMoney().getAmount(),
       });
     }
+
+    return Promise.resolve();
   }
 }
