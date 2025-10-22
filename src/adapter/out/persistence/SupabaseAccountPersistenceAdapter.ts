@@ -4,16 +4,16 @@ import {AccountId} from '../../../application/domain/model/Activity';
 import {LoadAccountPort} from '../../../application/port/out/LoadAccountPort';
 import {UpdateAccountStatePort} from '../../../application/port/out/UpdateAccountStatePort';
 import {SupabaseClientToken, TypedSupabaseClient} from '../../../config/types';
-import {AccountAggregateEntity} from './entities/AccountEntity';
-import {toDomain, toActivityEntities, calculateBaselineBalance} from './mappers/AccountMapper';
+import {AccountAggregateRecord} from './entities/AccountRecord';
+import {toDomain, toActivityRecords, calculateBaselineBalance} from './mappers/AccountMapper';
 
 /**
  * Supabaseを使用したアカウント永続化アダプター（双方向モデル変換版）
  *
  * 永続化層の責務：
  * 1. DBからデータを取得
- * 2. DBエンティティをドメインモデルに変換（Mapper使用）
- * 3. ドメインモデルからDBエンティティに変換（Mapper使用）
+ * 2. DBレコードをドメインモデルに変換（Mapper使用）
+ * 3. ドメインモデルからDBレコードに変換（Mapper使用）
  * 4. DBにデータを保存
  */
 @injectable()
@@ -34,7 +34,7 @@ export class SupabaseAccountPersistenceAdapter
      * 2. Mapperでドメインモデルに変換
      *
      * 注意: Supabaseから取得したデータは Database['public']['Tables']['activities']['Row'][] 型ですが、
-     * TypeScriptの構造的型付けにより PersistedActivityEntity[] として扱えます。
+     * TypeScriptの構造的型付けにより PersistedActivityRecord[] として扱えます。
      * (必要なプロパティをすべて持っているため、型アサーションや変換は不要)
      */
     async loadAccount(accountId: AccountId, baselineDate: Date): Promise<Account> {
@@ -78,15 +78,15 @@ export class SupabaseAccountPersistenceAdapter
 
         // 4. ベースライン残高を計算
         // 注意: Supabaseから取得したデータは Database['public']['Tables']['activities']['Row'][] 型
-        // TypeScriptの構造的型付けにより、PersistedActivityEntity[] として扱える
+        // TypeScriptの構造的型付けにより、PersistedActivityRecord[] として扱える
         // (必要なプロパティをすべて持っているため、型アサーションや変換は不要)
         const baselineBalance = calculateBaselineBalance(
             activitiesBeforeBaseline,
             accountIdNum
         );
 
-        // 5. 集約エンティティを作成
-        const aggregate: AccountAggregateEntity = {
+        // 5. 集約レコードを作成
+        const aggregate: AccountAggregateRecord = {
             account: {id: accountIdNum},
             activities: activitiesAfterBaseline,
             baselineBalance: Number(baselineBalance),
@@ -101,26 +101,26 @@ export class SupabaseAccountPersistenceAdapter
      *
      * 処理の流れ：
      * 1. ドメインモデルから新規アクティビティを抽出
-     * 2. Mapperでエンティティに変換
+     * 2. Mapperでレコードに変換
      * 3. DBに挿入
      */
     async updateActivities(account: Account): Promise<void> {
-        // 1. Mapperでドメインモデルをエンティティに変換
-        const activityEntities = toActivityEntities(account);
+        // 1. Mapperでドメインモデルをレコードに変換
+        const activityRecords = toActivityRecords(account);
 
-        if (activityEntities.length === 0) {
+        if (activityRecords.length === 0) {
             return; // 新規アクティビティがない場合は何もしない
         }
 
         // 2. DBに挿入
         const {error} = await this.supabase
             .from('activities')
-            .insert(activityEntities);
+            .insert(activityRecords);
 
         if (error) {
             throw new Error(`Failed to insert activities: ${error.message}`);
         }
 
-        console.log(`✅ Inserted ${activityEntities.length.toString()} new activities`);
+        console.log(`✅ Inserted ${activityRecords.length.toString()} new activities`);
     }
 }

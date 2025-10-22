@@ -2,33 +2,33 @@ import { Account } from '../../../../application/domain/model/Account';
 import { AccountId, Activity, ActivityId } from '../../../../application/domain/model/Activity';
 import { ActivityWindow } from '../../../../application/domain/model/ActivityWindow';
 import { Money } from '../../../../application/domain/model/Money';
-import type { AccountAggregateEntity } from '../entities/AccountEntity';
-import type { ActivityEntity, PersistedActivityEntity } from '../entities/ActivityEntity';
+import type { AccountAggregateRecord } from '../entities/AccountRecord';
+import type { ActivityRecord, PersistedActivityRecord } from '../entities/ActivityRecord';
 
 /**
  * 永続化層とドメイン層の間でモデルを変換するマッパー
  *
  * 責務：
- * - DBエンティティからドメインモデルへの変換
- * - ドメインモデルからDBエンティティへの変換
+ * - DBレコードからドメインモデルへの変換
+ * - ドメインモデルからDBレコードへの変換
  *
- * 注意: PersistedActivityEntityはSupabaseの型定義から直接派生するため、
+ * 注意: PersistedActivityRecordはSupabaseの型定義から直接派生するため、
  * Supabaseの生データを変換する必要はない
  */
 
 /**
- * DBエンティティをドメインモデルに変換
+ * DBレコードをドメインモデルに変換(データベースから取得した生データを、ビジネスロジックを持つドメインモデルに変換します。)
  *
  * @param aggregate アカウント集約（アカウント + アクティビティ + ベースライン残高）
  * @returns Accountドメインモデル
  */
-export function toDomain(aggregate: AccountAggregateEntity): Account {
+export function toDomain(aggregate: AccountAggregateRecord): Account {
   const accountId = new AccountId(BigInt(aggregate.account.id));
   const baselineBalance = Money.of(BigInt(aggregate.baselineBalance));
 
-  // アクティビティエンティティをドメインモデルに変換
-  const activities = aggregate.activities.map((activityEntity) =>
-      activityToDomain(activityEntity)
+  // アクティビティレコードをドメインモデルに変換
+  const activities = aggregate.activities.map((activityRecord) =>
+      activityToDomain(activityRecord)
   );
 
   const activityWindow = new ActivityWindow(...activities);
@@ -37,41 +37,41 @@ export function toDomain(aggregate: AccountAggregateEntity): Account {
 }
 
 /**
- * ActivityエンティティをActivityドメインモデルに変換
+ * ActivityレコードをActivityドメインモデルに変換
  */
-function activityToDomain(entity: PersistedActivityEntity): Activity {
+function activityToDomain(record: PersistedActivityRecord): Activity {
   return Activity.withId(
-      new ActivityId(BigInt(entity.id)),
-      new AccountId(BigInt(entity.owner_account_id)),
-      new AccountId(BigInt(entity.source_account_id)),
-      new AccountId(BigInt(entity.target_account_id)),
-      new Date(entity.timestamp),
-      Money.of(BigInt(entity.amount))
+      new ActivityId(BigInt(record.id)),
+      new AccountId(BigInt(record.owner_account_id)),
+      new AccountId(BigInt(record.source_account_id)),
+      new AccountId(BigInt(record.target_account_id)),
+      new Date(record.timestamp),
+      Money.of(BigInt(record.amount))
   );
 }
 
 /**
- * ドメインモデルからDBエンティティへの変換
+ * ドメインモデルからDBレコードへの変換
  *
- * 新しいアクティビティのみを抽出してエンティティに変換
+ * 新しいアクティビティのみを抽出してレコードに変換
  * （IDがないアクティビティ = まだDBに保存されていないもの）
  *
  * @param account Accountドメインモデル
- * @returns 挿入すべきActivityエンティティの配列
+ * @returns 挿入すべきActivityレコードの配列
  */
-export function toActivityEntities(account: Account): ActivityEntity[] {
+export function toActivityRecords(account: Account): ActivityRecord[] {
   const newActivities = account
       .getActivityWindow()
       .getActivities()
       .filter((activity) => !activity.getId()); // IDがない = 新規アクティビティ
 
-  return newActivities.map((activity) => activityToEntity(activity));
+  return newActivities.map((activity) => activityToRecord(activity));
 }
 
 /**
- * ActivityドメインモデルをActivityエンティティに変換
+ * ActivityドメインモデルをActivityレコードに変換
  */
-function activityToEntity(activity: Activity): ActivityEntity {
+function activityToRecord(activity: Activity): ActivityRecord {
   return {
     // idは自動採番されるため、指定しない
     timestamp: activity.getTimestamp().toISOString(),
@@ -90,7 +90,7 @@ function activityToEntity(activity: Activity): ActivityEntity {
  * @returns ベースライン残高
  */
 export function calculateBaselineBalance(
-    activities: PersistedActivityEntity[],
+    activities: PersistedActivityRecord[],
     accountId: number
 ): bigint {
   let balance = 0n;
