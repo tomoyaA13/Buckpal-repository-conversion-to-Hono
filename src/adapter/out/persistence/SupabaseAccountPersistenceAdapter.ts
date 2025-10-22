@@ -5,7 +5,7 @@ import {LoadAccountPort} from '../../../application/port/out/LoadAccountPort';
 import {UpdateAccountStatePort} from '../../../application/port/out/UpdateAccountStatePort';
 import {SupabaseClientToken, TypedSupabaseClient} from '../../../config/types';
 import {AccountAggregateEntity} from './entities/AccountEntity';
-import {AccountMapper} from './mappers/AccountMapper';
+import {toDomain, toActivityEntities, calculateBaselineBalance} from './mappers/AccountMapper';
 
 /**
  * Supabaseを使用したアカウント永続化アダプター（双方向モデル変換版）
@@ -80,7 +80,7 @@ export class SupabaseAccountPersistenceAdapter
         // 注意: Supabaseから取得したデータは Database['public']['Tables']['activities']['Row'][] 型
         // TypeScriptの構造的型付けにより、PersistedActivityEntity[] として扱える
         // (必要なプロパティをすべて持っているため、型アサーションや変換は不要)
-        const baselineBalance = AccountMapper.calculateBaselineBalance(
+        const baselineBalance = calculateBaselineBalance(
             activitiesBeforeBaseline,
             accountIdNum
         );
@@ -93,7 +93,7 @@ export class SupabaseAccountPersistenceAdapter
         };
 
         // 6. Mapperを使ってドメインモデルに変換
-        return AccountMapper.toDomain(aggregate);
+        return toDomain(aggregate);
     }
 
     /**
@@ -106,7 +106,7 @@ export class SupabaseAccountPersistenceAdapter
      */
     async updateActivities(account: Account): Promise<void> {
         // 1. Mapperでドメインモデルをエンティティに変換
-        const activityEntities = AccountMapper.toActivityEntities(account);
+        const activityEntities = toActivityEntities(account);
 
         if (activityEntities.length === 0) {
             return; // 新規アクティビティがない場合は何もしない
