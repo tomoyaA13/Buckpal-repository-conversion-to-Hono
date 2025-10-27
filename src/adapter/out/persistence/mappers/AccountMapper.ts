@@ -1,3 +1,5 @@
+// /Users/tomoya/WebstormProjects/Buckpal-repository-conversion-to-Hono/src/adapter/out/persistence/mappers/AccountMapper.ts
+
 import {Account} from '../../../../application/domain/model/Account';
 import {AccountId, Activity, ActivityId} from '../../../../application/domain/model/Activity';
 import {ActivityWindow} from '../../../../application/domain/model/ActivityWindow';
@@ -12,46 +14,11 @@ import type {ActivityRecord, PersistedActivityRecord} from '../entities/Activity
  * - DBレコードからドメインモデルへの変換
  * - ドメインモデルからDBレコードへの変換
  *
- * 注意: PersistedActivityRecordはSupabaseの型定義から直接派生するため、
- * Supabaseの生データを変換する必要はない
+ * 重要: マッパーは純粋な変換のみを行い、フィルタリングなどのビジネスロジックは含まない
  */
 
-/*// データベースから取得したデータ
-{
-  account: { id: 1 },
-  activities: [
-    {
-      id: 101,
-      owner_account_id: 1,
-      source_account_id: 1,
-      target_account_id: 2,
-      timestamp: "2024-01-15T10:00:00Z",
-      amount: 500
-    }
-  ],
-  baselineBalance: 1000
-}
-
-// ↓ toDomain() で変換 ↓
-
-// ドメインモデル
-Account {
-  id: AccountId(1),
-  baselineBalance: Money(1000),
-  activityWindow: ActivityWindow [
-   Activity {
-    id: ActivityId(101),
-    ownerAccountId: AccountId(1),
-    sourceAccountId: AccountId(1),     // アカウント1から
-    targetAccountId: AccountId(2),     // アカウント2へ
-    timestamp: Date("2024-01-15T10:00:00Z"),
-    money: Money(500)                  // 500円の送金記録
-  }
-]
-}*/
-
 /**
- * DBレコードをドメインモデルに変換(データベースから取得した生データを、ビジネスロジックを持つドメインモデルに変換します。)
+ * DBレコードをドメインモデルに変換
  *
  * @param accountAggregateRecord アカウント集約（アカウント + アクティビティ + ベースライン残高）
  * @returns Accountドメインモデル
@@ -83,21 +50,15 @@ function activityToDomain(activityRecord: PersistedActivityRecord): Activity {
 }
 
 /**
- * ドメインモデルからDBレコードへの変換
+ * Activityドメインモデルの配列をActivityレコードの配列に変換
  *
- * 新しいアクティビティのみを抽出してレコードに変換
- * （IDがないアクティビティ = まだDBに保存されていないもの）
+ * 純粋な変換のみを行う。フィルタリングはアダプター側の責務。
  *
- * @param account Accountドメインモデル
- * @returns 挿入すべきActivityレコードの配列
+ * @param activities Activityドメインモデルの配列
+ * @returns ActivityRecordの配列
  */
-export function toUnpersistedActivityRecords(account: Account): ActivityRecord[] {
-    const newActivities = account
-        .getActivityWindow()
-        .getActivities()
-        .filter((activity) => !activity.getId()); // IDがない = 新規アクティビティ
-
-    return newActivities.map(activityToRecord);
+export function toActivityRecords(activities: Activity[]): ActivityRecord[] {
+    return activities.map(activityToRecord);
 }
 
 /**
