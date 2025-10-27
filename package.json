@@ -21,11 +21,15 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.10.0",
     "@hono/eslint-config": "^2.0.3",
+    "@vitest/coverage-v8": "^4.0.3",
+    "@vitest/ui": "^4.0.3",
     "eslint": "^9.38.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "supabase": "^2.48.3",
+    "vitest": "~3.2.4",
     "wrangler": "^4.4.0"
   }
 }
