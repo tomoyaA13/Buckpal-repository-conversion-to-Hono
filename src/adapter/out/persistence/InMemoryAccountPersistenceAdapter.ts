@@ -137,13 +137,16 @@ export class InMemoryAccountPersistenceAdapter
 
   /**
    * アカウントのアクティビティを更新
+   *
+   * Tell, Don't Ask パターンを使用：
+   * - ドメインモデルに「新規アクティビティを教えて」と依頼
+   * - 内部構造を詮索しない
    */
   updateActivities(account: Account): Promise<void> {
-    const newActivities = account
-        .getActivityWindow()
-        .getActivities()
-        .filter((activity) => !activity.getId());
+    // ドメインモデルに問い合わせる（Tell, Don't Ask）
+    const newActivities = account.getNewActivities();
 
+    // 新規アクティビティをストアに追加
     for (const activity of newActivities) {
       this.activities.push({
         id: this.nextActivityId++,

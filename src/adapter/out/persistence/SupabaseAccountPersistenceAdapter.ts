@@ -4,17 +4,18 @@ import {AccountId} from '../../../application/domain/model/Activity';
 import {LoadAccountPort} from '../../../application/port/out/LoadAccountPort';
 import {UpdateAccountStatePort} from '../../../application/port/out/UpdateAccountStatePort';
 import {SupabaseClientToken, TypedSupabaseClient} from '../../../config/types';
-import {AccountAggregateEntity} from './entities/AccountEntity';
-import {toDomain, toActivityEntities, calculateBaselineBalance} from './mappers/AccountMapper';
+import {AccountAggregateRecord} from './entities/AccountRecord';
+import {toDomain, toActivityRecords, calculateBaselineBalance} from './mappers/AccountMapper';
 
 /**
  * Supabaseを使用したアカウント永続化アダプター（双方向モデル変換版）
  *
  * 永続化層の責務：
  * 1. DBからデータを取得
- * 2. DBエンティティをドメインモデルに変換（Mapper使用）
- * 3. ドメインモデルからDBエンティティに変換（Mapper使用）
+ * 2. DBレコードをドメインモデルに変換（Mapper使用）
+ * 3. ドメインモデルからDBレコードに変換（Mapper使用）
  * 4. DBにデータを保存
+ * 5. 「何を保存するか」の判断（ビジネスロジック）
  */
 @injectable()
 export class SupabaseAccountPersistenceAdapter
@@ -32,10 +33,6 @@ export class SupabaseAccountPersistenceAdapter
      * 処理の流れ：
      * 1. DBからアカウントとアクティビティを取得
      * 2. Mapperでドメインモデルに変換
-     *
-     * 注意: Supabaseから取得したデータは Database['public']['Tables']['activities']['Row'][] 型ですが、
-     * TypeScriptの構造的型付けにより PersistedActivityEntity[] として扱えます。
-     * (必要なプロパティをすべて持っているため、型アサーションや変換は不要)
      */
     async loadAccount(accountId: AccountId, baselineDate: Date): Promise<Account> {
         const accountIdNum = Number(accountId.getValue());
@@ -77,50 +74,51 @@ export class SupabaseAccountPersistenceAdapter
         }
 
         // 4. ベースライン残高を計算
-        // 注意: Supabaseから取得したデータは Database['public']['Tables']['activities']['Row'][] 型
-        // TypeScriptの構造的型付けにより、PersistedActivityEntity[] として扱える
-        // (必要なプロパティをすべて持っているため、型アサーションや変換は不要)
         const baselineBalance = calculateBaselineBalance(
             activitiesBeforeBaseline,
             accountIdNum
         );
 
-        // 5. 集約エンティティを作成
-        const aggregate: AccountAggregateEntity = {
+        // 5. 集約レコードを作成
+        const accountAggregateRecord: AccountAggregateRecord = {
             account: {id: accountIdNum},
             activities: activitiesAfterBaseline,
             baselineBalance: Number(baselineBalance),
         };
 
         // 6. Mapperを使ってドメインモデルに変換
-        return toDomain(aggregate);
+        return toDomain(accountAggregateRecord);
     }
 
     /**
      * アクティビティを更新（新規アクティビティを保存）
      *
      * 処理の流れ：
-     * 1. ドメインモデルから新規アクティビティを抽出
-     * 2. Mapperでエンティティに変換
+     * 1. ドメインモデルに新規アクティビティを問い合わせる（Tell, Don't Ask）
+     * 2. Mapperでレコードに変換
      * 3. DBに挿入
      */
     async updateActivities(account: Account): Promise<void> {
-        // 1. Mapperでドメインモデルをエンティティに変換
-        const activityEntities = toActivityEntities(account);
+        // 1. ドメインモデルに「新規アクティビティ」を問い合わせる
+        // （内部構造を詮索せず、結果だけを依頼する）
+        const newActivities = account.getNewActivities();
 
-        if (activityEntities.length === 0) {
+        if (newActivities.length === 0) {
             return; // 新規アクティビティがない場合は何もしない
         }
 
-        // 2. DBに挿入
+        // 2. Mapperで純粋な変換を行う
+        const activityRecords = toActivityRecords(newActivities);
+
+        // 3. DBに挿入
         const {error} = await this.supabase
             .from('activities')
-            .insert(activityEntities);
+            .insert(activityRecords);
 
         if (error) {
             throw new Error(`Failed to insert activities: ${error.message}`);
         }
 
-        console.log(`✅ Inserted ${activityEntities.length.toString()} new activities`);
+        console.log(`✅ Inserted ${activityRecords.length.toString()} new activities`);
     }
 }

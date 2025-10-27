@@ -57,10 +57,10 @@
 │  Account, Activity, Money (ドメインモデル)                    │
 └────────────────────┬────────────────────────────────────────┘
                      │ AccountMapper
-                     ↓ toDomain() / toActivityEntities()
+                     ↓ toDomain() / toActivityRecords()
 ┌─────────────────────────────────────────────────────────────┐
 │                     永続化層                                  │
-│  AccountEntity, ActivityEntity (DBテーブル構造)               │
+│  PersistedAccountRecord, ActivityRecord (DBテーブル構造)      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -80,8 +80,8 @@ HTTPリクエスト
 【ビジネスロジック実行】
   ↓
 【アプリケーション層】Account (ドメインモデル)
-  ↓ [AccountMapper.toActivityEntities()]
-【永続化層】ActivityEntity[] (DBエンティティ)
+  ↓ [AccountMapper.toActivityRecords()]
+【永続化層】ActivityRecord[] (DBレコード)
   ↓
 Supabase INSERT
   ↓
@@ -130,10 +130,10 @@ export class SendMoneyMapper {
 // src/adapter/out/persistence/mappers/AccountMapper.ts
 
 export class AccountMapper {
-  // DBエンティティ → ドメインモデル
-  // 注意: PersistedActivityEntityはSupabaseの型定義から直接派生するため、
+  // DBレコード → ドメインモデル
+  // 注意: PersistedActivityRecordはSupabaseの型定義から直接派生するため、
   // Supabaseの生データを変換するメソッドは不要
-  static toDomain(aggregate: AccountAggregateEntity): Account {
+  static toDomain(aggregate: AccountAggregateRecord): Account {
     const accountId = new AccountId(BigInt(aggregate.account.id));
     const baselineBalance = Money.of(BigInt(aggregate.baselineBalance));
     const activities = aggregate.activities.map((e) => this.activityToDomain(e));
@@ -141,13 +141,13 @@ export class AccountMapper {
     return Account.withId(accountId, baselineBalance, activityWindow);
   }
 
-  // ドメインモデル → DBエンティティ
-  static toActivityEntities(account: Account): ActivityEntity[] {
+  // ドメインモデル → DBレコード
+  static toActivityRecords(account: Account): ActivityRecord[] {
     const newActivities = account
       .getActivityWindow()
       .getActivities()
       .filter((activity) => !activity.getId());
-    return newActivities.map((activity) => this.activityToEntity(activity));
+    return newActivities.map((activity) => this.activityToRecord(activity));
   }
 }
 ```

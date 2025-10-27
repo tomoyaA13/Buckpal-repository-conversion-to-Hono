@@ -3,22 +3,6 @@ import { Activity} from './Activity';
 import type {ActivityWindow} from './ActivityWindow';
 import type {Money} from './Money';
 
-/**
- * お金を保持するアカウント
- * アグリゲートルート：ビジネスルールを強制する責任を持つ
- *
- * アカウントオブジェクトは最新のアクティビティウィンドウのみを含む
- * 合計残高 = ベースライン残高 + アクティビティウィンドウ内の残高
- */
-
-// Account は以下を集約しています：
-// 集約の構成
-// Account (集約ルート)
-// ├── AccountId (値オブジェクト)
-// ├── Money (baselineBalance) (値オブジェクト)
-// └── ActivityWindow (エンティティ)
-//     └── Activity[] (複数の取引エンティティ)
-
 export class Account {
     private constructor(
         private readonly id: AccountId | null,
@@ -27,9 +11,6 @@ export class Account {
     ) {
     }
 
-    /**
-     * IDなしでアカウントを生成（新規作成時）
-     */
     static withoutId(
         baselineBalance: Money,
         activityWindow: ActivityWindow
@@ -37,9 +18,6 @@ export class Account {
         return new Account(null, baselineBalance, activityWindow);
     }
 
-    /**
-     * IDありでアカウントを生成（DB再構成時）
-     */
     static withId(
         accountId: AccountId,
         baselineBalance: Money,
@@ -61,9 +39,23 @@ export class Account {
     }
 
     /**
-     * アカウントの合計残高を計算
-     * ベースライン残高 + アクティビティウィンドウ内の残高
+     * 新規アクティビティを取得
+     *
+     * IDがないアクティビティ = まだデータベースに保存されていないアクティビティ
+     *
+     * ビジネスルール：
+     * - アクティビティは作成時にIDを持たない
+     * - DBに保存されると自動採番されたIDが付与される
+     * - このメソッドは未保存のアクティビティのみを返す
+     *
+     * @returns 未保存のアクティビティの配列
      */
+    getNewActivities(): Activity[] {
+        return this.activityWindow
+            .getActivities()
+            .filter((activity) => !activity.getId());
+    }
+
     calculateBalance(): Money {
         if (!this.id) {
             throw new Error('Cannot calculate balance without account ID');
@@ -74,12 +66,6 @@ export class Account {
         );
     }
 
-    /**
-     * 指定金額を引き出す（出金）
-     * 成功した場合、新しいアクティビティを作成
-     *
-     * @returns 引き出しが成功したかどうか
-     */
     withdraw(money: Money, targetAccountId: AccountId): boolean {
         if (!this.id) {
             throw new Error('Cannot withdraw without account ID');
@@ -101,20 +87,10 @@ export class Account {
         return true;
     }
 
-    /**
-     * 引き出しが可能かどうかチェック
-     * 残高が0以上になる場合のみ許可
-     */
     private mayWithdraw(money: Money): boolean {
         return this.calculateBalance().minus(money).isPositiveOrZero();
     }
 
-    /**
-     * 指定金額を預け入れる（入金）
-     * 新しいアクティビティを作成
-     *
-     * @returns 預け入れが成功したかどうか（常にtrue）
-     */
     deposit(money: Money, sourceAccountId: AccountId): boolean {
         if (!this.id) {
             throw new Error('Cannot deposit without account ID');

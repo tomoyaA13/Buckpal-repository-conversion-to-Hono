@@ -298,12 +298,17 @@ class SendMoneyCommand {
   money: Money;
 }
 
-// 永続化層のモデル
-interface AccountEntity {
+// 永続化層のレコード
+interface PersistedAccountRecord {
   id: number;
 }
 
-interface ActivityEntity {
+interface ActivityRecord {
+  owner_account_id: number;
+  amount: number;
+}
+
+interface PersistedActivityRecord {
   id: number;
   owner_account_id: number;
   amount: number;
@@ -325,15 +330,15 @@ class SendMoneyMapper {
 }
 
 // 永続化層のマッパー
-// 注意: PersistedActivityEntityはSupabaseの型定義から直接派生するため、
+// 注意: PersistedActivityRecordはSupabaseの型定義から直接派生するため、
 // Supabaseの生データを変換するメソッドは不要
 class AccountMapper {
-  static toDomain(aggregate: AccountAggregateEntity): Account {
-    // エンティティ → ドメインモデル
+  static toDomain(aggregate: AccountAggregateRecord): Account {
+    // レコード → ドメインモデル
   }
 
-  static toEntities(account: Account): ActivityEntity[] {
-    // ドメインモデル → エンティティ
+  static toRecords(account: Account): ActivityRecord[] {
+    // ドメインモデル → レコード
   }
 }
 ```
