@@ -75,7 +75,7 @@ export class Account {
             return false;
         }
 
-        const withdrawal = Activity.withoutId(
+        const withdrawalActivity = Activity.withoutId(
             this.id,
             this.id,
             targetAccountId,
@@ -83,7 +83,7 @@ export class Account {
             money
         );
 
-        this.activityWindow.addActivity(withdrawal);
+        this.activityWindow.addActivity(withdrawalActivity);
         return true;
     }
 
@@ -96,7 +96,7 @@ export class Account {
             throw new Error('Cannot deposit without account ID');
         }
 
-        const deposit = Activity.withoutId(
+        const depositActivity = Activity.withoutId(
             this.id,
             sourceAccountId,
             this.id,
@@ -104,7 +104,7 @@ export class Account {
             money
         );
 
-        this.activityWindow.addActivity(deposit);
+        this.activityWindow.addActivity(depositActivity);
         return true;
     }
 }
