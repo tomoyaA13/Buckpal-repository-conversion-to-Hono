@@ -91,7 +91,7 @@ function activityToDomain(activityRecord: PersistedActivityRecord): Activity {
  * @param account Accountドメインモデル
  * @returns 挿入すべきActivityレコードの配列
  */
-export function toActivityRecords(account: Account): ActivityRecord[] {
+export function toUnpersistedActivityRecords(account: Account): ActivityRecord[] {
     const newActivities = account
         .getActivityWindow()
         .getActivities()

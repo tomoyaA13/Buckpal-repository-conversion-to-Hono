@@ -48,8 +48,7 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
         // ① 事前検証: 限度額チェック
         if (!this.domainService.isWithinThreshold(
             command.money,
-            this.moneyTransferProperties.maximumTransferThreshold
-        )) {
+            this.moneyTransferProperties.maximumTransferThreshold)) {
             throw new ThresholdExceededException(
                 this.moneyTransferProperties.maximumTransferThreshold,
                 command.money

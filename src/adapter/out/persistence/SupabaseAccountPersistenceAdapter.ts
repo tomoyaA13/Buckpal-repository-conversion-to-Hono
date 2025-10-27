@@ -5,7 +5,7 @@ import {LoadAccountPort} from '../../../application/port/out/LoadAccountPort';
 import {UpdateAccountStatePort} from '../../../application/port/out/UpdateAccountStatePort';
 import {SupabaseClientToken, TypedSupabaseClient} from '../../../config/types';
 import {AccountAggregateRecord} from './entities/AccountRecord';
-import {toDomain, toActivityRecords, calculateBaselineBalance} from './mappers/AccountMapper';
+import {toDomain, toUnpersistedActivityRecords, calculateBaselineBalance} from './mappers/AccountMapper';
 
 /**
  * Supabaseを使用したアカウント永続化アダプター（双方向モデル変換版）
@@ -106,21 +106,21 @@ export class SupabaseAccountPersistenceAdapter
      */
     async updateActivities(account: Account): Promise<void> {
         // 1. Mapperでドメインモデルをレコードに変換
-        const activityRecords = toActivityRecords(account);
+        const unpersistedActivityRecords = toUnpersistedActivityRecords(account);
 
-        if (activityRecords.length === 0) {
+        if (unpersistedActivityRecords.length === 0) {
             return; // 新規アクティビティがない場合は何もしない
         }
 
         // 2. DBに挿入
         const {error} = await this.supabase
             .from('activities')
-            .insert(activityRecords);
+            .insert(unpersistedActivityRecords);
 
         if (error) {
             throw new Error(`Failed to insert activities: ${error.message}`);
         }
 
-        console.log(`✅ Inserted ${activityRecords.length.toString()} new activities`);
+        console.log(`✅ Inserted ${unpersistedActivityRecords.length.toString()} new activities`);
     }
 }
