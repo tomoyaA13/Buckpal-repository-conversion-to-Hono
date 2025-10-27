@@ -1,5 +1,3 @@
-// /Users/tomoya/WebstormProjects/Buckpal-repository-conversion-to-Hono/src/adapter/out/persistence/mappers/AccountMapper.ts
-
 import {Account} from '../../../../application/domain/model/Account';
 import {AccountId, Activity, ActivityId} from '../../../../application/domain/model/Activity';
 import {ActivityWindow} from '../../../../application/domain/model/ActivityWindow';

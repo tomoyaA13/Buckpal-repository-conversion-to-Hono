@@ -1,5 +1,3 @@
-// /Users/tomoya/WebstormProjects/Buckpal-repository-conversion-to-Hono/src/adapter/out/persistence/SupabaseAccountPersistenceAdapter.ts
-
 import {inject, injectable} from 'tsyringe';
 import {Account} from '../../../application/domain/model/Account';
 import {AccountId} from '../../../application/domain/model/Activity';

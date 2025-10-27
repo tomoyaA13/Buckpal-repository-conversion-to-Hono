@@ -1,5 +1,3 @@
-// /Users/tomoya/WebstormProjects/Buckpal-repository-conversion-to-Hono/src/application/domain/model/Account.ts
-
 import type {AccountId} from './Activity';
 import { Activity} from './Activity';
 import type {ActivityWindow} from './ActivityWindow';
