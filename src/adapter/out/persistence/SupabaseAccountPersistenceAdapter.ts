@@ -86,14 +86,14 @@ export class SupabaseAccountPersistenceAdapter
         );
 
         // 5. 集約レコードを作成
-        const aggregate: AccountAggregateRecord = {
+        const accountAggregateRecord: AccountAggregateRecord = {
             account: {id: accountIdNum},
             activities: activitiesAfterBaseline,
             baselineBalance: Number(baselineBalance),
         };
 
         // 6. Mapperを使ってドメインモデルに変換
-        return toDomain(aggregate);
+        return toDomain(accountAggregateRecord);
     }
 
     /**
