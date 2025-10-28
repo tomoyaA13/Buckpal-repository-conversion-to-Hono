@@ -86,6 +86,35 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             .in("id", [Number(TEST_ACCOUNT_1), Number(TEST_ACCOUNT_2)]);
     }
 
+    /**
+     * テスト用アカウントに初期残高を設定するヘルパー関数
+     * 
+     * @param accountId 対象アカウントID
+     * @param amount 初期残高（円）
+     * @param timestamp アクティビティのタイムスタンプ（デフォルト: 2024-12-01）
+     */
+    async function setupInitialBalance(
+        accountId: bigint,
+        amount: number,
+        timestamp: Date = new Date("2024-12-01")
+    ) {
+        const { error } = await supabase.from("activities").insert([
+            {
+                owner_account_id: Number(accountId),
+                source_account_id: Number(TEST_ACCOUNT_2), // 外部からの入金
+                target_account_id: Number(accountId),
+                timestamp: timestamp.toISOString(),
+                amount: amount,
+            },
+        ]);
+
+        if (error) {
+            throw new Error(`Failed to setup initial balance: ${error.message}`);
+        }
+
+        console.log(`✅ Initial balance set: ${accountId} = ${amount}`);
+    }
+
     // ========================================
     // loadAccount のテスト
     // ========================================
@@ -217,14 +246,20 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             const targetAccountId = new AccountId(TEST_ACCOUNT_2);
             const baselineDate = new Date("2025-01-01");
 
-            // 空のアカウントを読み込む
+            // 初期残高を設定（1000円）
+            await setupInitialBalance(TEST_ACCOUNT_1, 1000);
+
+            // アカウントを読み込む
             const account = await adapter.loadAccount(accountId, baselineDate);
 
+            // 残高確認
+            expect(account.calculateBalance().getAmount()).toBe(1000n);
+
+            // ===== Act =====
             // アカウントに操作を実行（新規アクティビティが作られる）
             const success = account.withdraw(Money.of(100), targetAccountId);
             expect(success).toBe(true);
 
-            // ===== Act =====
             await adapter.updateActivities(account);
 
             // ===== Assert =====
@@ -233,8 +268,8 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
                 .from("activities")
                 .select("*")
                 .eq("owner_account_id", Number(TEST_ACCOUNT_1))
-                .order("timestamp", { ascending: false })
-                .limit(1);
+                .gte("timestamp", baselineDate.toISOString())
+                .order("timestamp", { ascending: false });
 
             expect(error).toBeNull();
             expect(activities).toHaveLength(1);
@@ -249,23 +284,37 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             const targetAccountId = new AccountId(TEST_ACCOUNT_2);
             const baselineDate = new Date("2025-01-01");
 
+            // 初期残高を設定（500円あれば十分）
+            await setupInitialBalance(TEST_ACCOUNT_1, 500);
+
             const account = await adapter.loadAccount(accountId, baselineDate);
 
-            // 複数の操作を実行
-            account.withdraw(Money.of(100), targetAccountId);
-            account.deposit(Money.of(50), targetAccountId);
-            account.withdraw(Money.of(30), targetAccountId);
-
             // ===== Act =====
+            // 複数の操作を実行
+            const withdraw1 = account.withdraw(Money.of(100), targetAccountId); // 500 - 100 = 400
+            const deposit1 = account.deposit(Money.of(50), targetAccountId);    // 400 + 50 = 450
+            const withdraw2 = account.withdraw(Money.of(30), targetAccountId);  // 450 - 30 = 420
+
+            expect(withdraw1).toBe(true);
+            expect(deposit1).toBe(true);
+            expect(withdraw2).toBe(true);
+
             await adapter.updateActivities(account);
 
             // ===== Assert =====
             const { data: activities } = await supabase
                 .from("activities")
                 .select("*")
-                .eq("owner_account_id", Number(TEST_ACCOUNT_1));
+                .eq("owner_account_id", Number(TEST_ACCOUNT_1))
+                .gte("timestamp", baselineDate.toISOString())
+                .order("timestamp", { ascending: true });
 
+            // baselineDate以降の新規アクティビティのみ（3件）
             expect(activities).toHaveLength(3);
+            
+            // 残高確認: 500 - 100 + 50 - 30 = 420
+            const reloadedAccount = await adapter.loadAccount(accountId, baselineDate);
+            expect(reloadedAccount.calculateBalance().getAmount()).toBe(420n);
         });
 
         it("新規アクティビティがない場合、何もしない", async () => {
@@ -287,6 +336,40 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
             expect(activities).toHaveLength(0);
         });
+
+        it("残高不足の場合、withdrawが失敗し、DBに保存されない（ドメインルールのテスト）", async () => {
+            // ===== Arrange =====
+            const accountId = new AccountId(TEST_ACCOUNT_1);
+            const targetAccountId = new AccountId(TEST_ACCOUNT_2);
+            const baselineDate = new Date("2025-01-01");
+
+            // 初期残高50円のみ
+            await setupInitialBalance(TEST_ACCOUNT_1, 50);
+
+            const account = await adapter.loadAccount(accountId, baselineDate);
+            expect(account.calculateBalance().getAmount()).toBe(50n);
+
+            // ===== Act =====
+            // 残高50円しかないのに100円引き出そうとする
+            const success = account.withdraw(Money.of(100), targetAccountId);
+
+            // ===== Assert =====
+            expect(success).toBe(false); // 失敗することを確認
+
+            // DBには新規アクティビティが保存されない
+            await adapter.updateActivities(account);
+
+            const { data: activities } = await supabase
+                .from("activities")
+                .select("*")
+                .eq("owner_account_id", Number(TEST_ACCOUNT_1))
+                .gte("timestamp", baselineDate.toISOString());
+
+            expect(activities).toHaveLength(0); // 新規アクティビティなし
+
+            // 残高は変わらず50円のまま
+            expect(account.calculateBalance().getAmount()).toBe(50n);
+        });
     });
 
     // ========================================
@@ -300,12 +383,18 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             const targetAccountId = new AccountId(TEST_ACCOUNT_2);
             const baselineDate = new Date("2025-01-01");
 
+            // 初期残高を設定
+            await setupInitialBalance(TEST_ACCOUNT_1, 1000);
+
             // 1. アカウントを読み込む
             const account = await adapter.loadAccount(accountId, baselineDate);
             const initialBalance = account.calculateBalance();
 
+            expect(initialBalance.getAmount()).toBe(1000n); // 初期残高確認
+
             // 2. 操作を実行
-            account.withdraw(Money.of(100), targetAccountId);
+            const success = account.withdraw(Money.of(100), targetAccountId);
+            expect(success).toBe(true);
 
             // ===== Act =====
             // 3. 保存
@@ -315,14 +404,15 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             const reloadedAccount = await adapter.loadAccount(accountId, baselineDate);
 
             // ===== Assert =====
-            // 残高が正しく反映されている
-            const expectedBalance = initialBalance.minus(Money.of(100));
-            expect(reloadedAccount.calculateBalance().getAmount()).toBe(
-                expectedBalance.getAmount()
-            );
+            // 残高が正しく反映されている: 1000 - 100 = 900
+            expect(reloadedAccount.calculateBalance().getAmount()).toBe(900n);
 
-            // アクティビティが保存されている
-            expect(reloadedAccount.getActivityWindow().getActivities()).toHaveLength(1);
+            // baselineDate以降のアクティビティが保存されている
+            const newActivities = reloadedAccount
+                .getActivityWindow()
+                .getActivities()
+                .filter(a => a.getTimestamp() >= baselineDate);
+            expect(newActivities).toHaveLength(1);
         });
 
         it("シナリオ: Aさんの口座から引き出し→DBに保存→残高確認", async () => {
