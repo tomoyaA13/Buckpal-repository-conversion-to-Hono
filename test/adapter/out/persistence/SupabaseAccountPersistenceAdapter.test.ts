@@ -417,8 +417,8 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
         it("シナリオ: Aさんの口座から引き出し→DBに保存→残高確認", async () => {
             // ===== Arrange =====
-            const aさん = new AccountId(TEST_ACCOUNT_1);
-            const bさん = new AccountId(TEST_ACCOUNT_2);
+            const accountIdA = new AccountId(TEST_ACCOUNT_1);
+            const accountIdB = new AccountId(TEST_ACCOUNT_2);
             const baselineDate = new Date("2025-01-01");
 
             // 初期残高を設定（過去のアクティビティとして）
@@ -433,25 +433,25 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             ]);
 
             // アカウントを読み込む
-            const aさんのアカウント = await adapter.loadAccount(aさん, baselineDate);
+            const accountA = await adapter.loadAccount(accountIdA, baselineDate);
 
             // 初期残高確認
-            expect(aさんのアカウント.calculateBalance().getAmount()).toBe(10000n);
+            expect(accountA.calculateBalance().getAmount()).toBe(10000n);
 
             // ===== Act =====
             // 3000円送金
-            const success = aさんのアカウント.withdraw(Money.of(3000), bさん);
+            const success = accountA.withdraw(Money.of(3000), accountIdB);
             expect(success).toBe(true);
 
             // DBに保存
-            await adapter.updateActivities(aさんのアカウント);
+            await adapter.updateActivities(accountA);
 
             // 再読み込み
-            const 再読み込み後 = await adapter.loadAccount(aさん, baselineDate);
+            const reloadedAccountA = await adapter.loadAccount(accountIdA, baselineDate);
 
             // ===== Assert =====
             // 残高: 10000 - 3000 = 7000
-            expect(再読み込み後.calculateBalance().getAmount()).toBe(7000n);
-        });
+            expect(reloadedAccountA.calculateBalance().getAmount()).toBe(7000n);
+        });;
     });
 });
