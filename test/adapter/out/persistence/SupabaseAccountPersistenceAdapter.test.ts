@@ -1,29 +1,26 @@
 // ========================================
 // インポート: テストに必要な機能を読み込む
 // ========================================
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
+import {afterEach, beforeAll, beforeEach, describe, expect, it} from "vitest";
 // describe: テストをグループ化する関数
 // it: 個別のテストケースを定義する関数
 // expect: テスト結果を検証する関数（アサーション）
 // beforeAll: すべてのテストの実行前に1回だけ実行される
 // beforeEach: 各テストの実行前に毎回実行される
 // afterEach: 各テストの実行後に毎回実行される
-
-import { env } from "cloudflare:test";
+import {env} from "cloudflare:test";
 // Cloudflare Workers のテスト環境から環境変数を取得
-
-import { createClient } from "@supabase/supabase-js";
+import {createClient} from "@supabase/supabase-js";
 // Supabaseデータベースに接続するためのクライアントライブラリ
-
-import { SupabaseAccountPersistenceAdapter } from "../../../../src/adapter/out/persistence/SupabaseAccountPersistenceAdapter";
+import {
+    SupabaseAccountPersistenceAdapter
+} from "../../../../src/adapter/out/persistence/SupabaseAccountPersistenceAdapter";
 // テスト対象: アカウントデータをSupabaseに保存/読み込みするアダプター
 // これがヘキサゴナルアーキテクチャの「アウトバウンドアダプター」です
-
-import { AccountId } from "../../../../src/application/domain/model/Activity";
-import { Money } from "../../../../src/application/domain/model/Money";
+import {AccountId} from "../../../../src/application/domain/model/Activity";
+import {Money} from "../../../../src/application/domain/model/Money";
 // ドメインモデル: ビジネスロジックの中心となるクラス
-
-import type { Database } from "../../../../supabase/database";
+import type {Database} from "../../../../supabase/database";
 // TypeScript型定義: Supabaseのテーブル構造を型安全に扱うため
 
 /**
@@ -49,7 +46,19 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
     // ========================================
 
     // Supabaseクライアント: データベースに接続するためのオブジェクト
+    //
+    // 【型定義の仕組み】
+    // ReturnType<typeof createClient<Database>>
+    //
+    // ステップ1: typeof createClient<Database>
+    //   → createClient関数の型を取得（値→型の変換）
+    //   → (url: string, key: string) => SupabaseClient<Database>
+    //
+    // ステップ2: ReturnType<...>
+    //   → 関数の戻り値の型だけを抽出（関数型→戻り値型）
+    //   → SupabaseClient<Database>
     let supabase: ReturnType<typeof createClient<Database>>;
+
 
     // テスト対象のアダプター: これをテストする！
     let adapter: SupabaseAccountPersistenceAdapter;
@@ -106,9 +115,9 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
         // ===== テスト用アカウントを作成 =====
         // accountsテーブルに2つのアカウントを挿入
-        const { error } = await supabase.from("accounts").insert([
-            { id: Number(TEST_ACCOUNT_1) }, // 999001番のアカウント
-            { id: Number(TEST_ACCOUNT_2) }, // 999002番のアカウント
+        const {error} = await supabase.from("accounts").insert([
+            {id: Number(TEST_ACCOUNT_1)}, // 999001番のアカウント
+            {id: Number(TEST_ACCOUNT_2)}, // 999002番のアカウント
         ]);
 
         // 挿入に失敗した場合はエラーを投げる
@@ -185,17 +194,17 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
         timestamp: Date = new Date("2024-12-01")
     ) {
         // activitiesテーブルに「入金アクティビティ」を挿入
-        const { error } = await supabase
+        const {error} = await supabase
             .from("activities")
             .insert([
-            {
-                owner_account_id: Number(accountId),        // このアカウントに
-                source_account_id: Number(TEST_ACCOUNT_2),  // 外部から（送金元）
-                target_account_id: Number(accountId),       // このアカウントへ（送金先）
-                timestamp: timestamp.toISOString(),         // この日時に
-                amount: amount,                             // この金額が入金された
-            },
-        ]);
+                {
+                    owner_account_id: Number(accountId),        // このアカウントに
+                    source_account_id: Number(TEST_ACCOUNT_2),  // 外部から（送金元）
+                    target_account_id: Number(accountId),       // このアカウントへ（送金先）
+                    timestamp: timestamp.toISOString(),         // この日時に
+                    amount: amount,                             // この金額が入金された
+                },
+            ]);
 
         if (error) {
             throw new Error(`Failed to setup initial balance: ${error.message}`);
@@ -262,24 +271,24 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             // テスト用アクティビティを挿入
             // アクティビティ1: 100円の入金
             // アクティビティ2: 50円の出金
-            const { error: insertError } = await supabase
+            const {error: insertError} = await supabase
                 .from("activities")
                 .insert([
-                {
-                    owner_account_id: Number(TEST_ACCOUNT_1),  // このアカウントの取引
-                    source_account_id: Number(TEST_ACCOUNT_2), // TEST_ACCOUNT_2から
-                    target_account_id: Number(TEST_ACCOUNT_1), // TEST_ACCOUNT_1へ（入金）
-                    timestamp: now.toISOString(),
-                    amount: 100, // 100円
-                },
-                {
-                    owner_account_id: Number(TEST_ACCOUNT_1),  // このアカウントの取引
-                    source_account_id: Number(TEST_ACCOUNT_1), // TEST_ACCOUNT_1から（出金）
-                    target_account_id: Number(TEST_ACCOUNT_2), // TEST_ACCOUNT_2へ
-                    timestamp: now.toISOString(),
-                    amount: 50, // 50円
-                },
-            ]);
+                    {
+                        owner_account_id: Number(TEST_ACCOUNT_1),  // このアカウントの取引
+                        source_account_id: Number(TEST_ACCOUNT_2), // TEST_ACCOUNT_2から
+                        target_account_id: Number(TEST_ACCOUNT_1), // TEST_ACCOUNT_1へ（入金）
+                        timestamp: now.toISOString(),
+                        amount: 100, // 100円
+                    },
+                    {
+                        owner_account_id: Number(TEST_ACCOUNT_1),  // このアカウントの取引
+                        source_account_id: Number(TEST_ACCOUNT_1), // TEST_ACCOUNT_1から（出金）
+                        target_account_id: Number(TEST_ACCOUNT_2), // TEST_ACCOUNT_2へ
+                        timestamp: now.toISOString(),
+                        amount: 50, // 50円
+                    },
+                ]);
 
             if (insertError) {
                 throw new Error(`Failed to insert activities: ${insertError.message}`);
@@ -437,12 +446,12 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
             // ===== Assert =====
             // DBから直接アクティビティを取得して確認
-            const { data: activities, error } = await supabase
+            const {data: activities, error} = await supabase
                 .from("activities")
                 .select("*")
                 .eq("owner_account_id", Number(TEST_ACCOUNT_1)) // このアカウントの
                 .gte("timestamp", baselineDate.toISOString())   // baselineDate以降の
-                .order("timestamp", { ascending: false });       // 新しい順に
+                .order("timestamp", {ascending: false});       // 新しい順に
 
             // エラーがないか
             expect(error).toBeNull();
@@ -500,12 +509,12 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
             // ===== Assert =====
             // DBから新規アクティビティを取得
-            const { data: activities } = await supabase
+            const {data: activities} = await supabase
                 .from("activities")
                 .select("*")
                 .eq("owner_account_id", Number(TEST_ACCOUNT_1))
                 .gte("timestamp", baselineDate.toISOString()) // baselineDate以降のみ
-                .order("timestamp", { ascending: true });      // 古い順に
+                .order("timestamp", {ascending: true});      // 古い順に
 
             // baselineDate以降の新規アクティビティが3件あるか
             expect(activities).toHaveLength(3);
@@ -542,7 +551,7 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
             // ===== Assert =====
             // DBにアクティビティがないことを確認
-            const { data: activities } = await supabase
+            const {data: activities} = await supabase
                 .from("activities")
                 .select("*")
                 .eq("owner_account_id", Number(TEST_ACCOUNT_1));
@@ -595,7 +604,7 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             await adapter.updateActivities(account);
 
             // DBに新規アクティビティがないことを確認
-            const { data: activities } = await supabase
+            const {data: activities} = await supabase
                 .from("activities")
                 .select("*")
                 .eq("owner_account_id", Number(TEST_ACCOUNT_1))
