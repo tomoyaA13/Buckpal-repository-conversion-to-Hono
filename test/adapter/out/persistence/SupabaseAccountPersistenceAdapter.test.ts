@@ -175,13 +175,18 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
     /**
      * テスト用アカウントに初期残高を設定するヘルパー関数
      *
+     * 【修正内容】nullable対応
+     * - source_account_id を null にして、外部からの入金を表現
+     * - これにより、実世界のビジネスドメインを正確に表現できる
+     *
      * 【なぜ必要？】
      * - ほとんどのテストで「既に残高があるアカウント」が必要
      * - 毎回同じコードを書くのは面倒
      * - この関数を使えば1行で初期残高を設定できる
      *
      * 【仕組み】
-     * - activitiesテーブルに「入金アクティビティ」を1件追加する
+     * - activitiesテーブルに「外部からの入金アクティビティ」を1件追加する
+     * - source_account_id = null: システム外部からの入金（給与、ATM入金、初期残高）
      * - これにより、アカウントに指定した金額の残高ができる
      *
      * @param accountId 残高を追加する対象のアカウントID
@@ -193,16 +198,16 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
         amount: number,
         timestamp: Date = new Date("2024-12-01")
     ) {
-        // activitiesテーブルに「入金アクティビティ」を挿入
+        // activitiesテーブルに「外部からの入金アクティビティ」を挿入
         const {error} = await supabase
             .from("activities")
             .insert([
                 {
-                    owner_account_id: Number(accountId),        // このアカウントに
-                    source_account_id: Number(TEST_ACCOUNT_2),  // 外部から（送金元）
-                    target_account_id: Number(accountId),       // このアカウントへ（送金先）
-                    timestamp: timestamp.toISOString(),         // この日時に
-                    amount: amount,                             // この金額が入金された
+                    owner_account_id: Number(accountId),
+                    source_account_id: null,  // ← 外部からの入金（nullable対応）
+                    target_account_id: Number(accountId),
+                    timestamp: timestamp.toISOString(),
+                    amount: amount,
                 },
             ]);
 
@@ -210,9 +215,8 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             throw new Error(`Failed to setup initial balance: ${error.message}`);
         }
 
-        console.log(`✅ Initial balance set: ${accountId} = ${amount}`);
+        console.log(`✅ Initial balance set: Account ${accountId} = ${amount}円 (external deposit)`);
     }
-
     // ========================================
     // loadAccount のテスト
     // 【目的】アダプターが正しくデータベースからアカウントを読み込めるかテスト
@@ -740,6 +744,37 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             // ===== 残高確認 =====
             // 残高: 10,000円 - 3,000円 = 7,000円
             expect(reloadedAccountA.calculateBalance().getAmount()).toBe(7000n);
+        });
+
+        /**
+         * 【新規追加】テストケース: 外部からの入金（給与、ATM入金）
+         */
+        it("シナリオ: 外部からの入金を処理できる", async () => {
+            // ===== Arrange =====
+            const accountId = new AccountId(TEST_ACCOUNT_1);
+            const baselineDate = new Date("2025-01-01");
+
+            // 初期残高を設定（外部からの入金として）
+            await setupInitialBalance(TEST_ACCOUNT_1, 5000);
+
+            // アカウントを読み込む
+            const account = await adapter.loadAccount(accountId, baselineDate);
+
+            // ===== Assert =====
+            // 初期残高が5000円であることを確認
+            expect(account.calculateBalance().getAmount()).toBe(5000n);
+
+            // DBから直接アクティビティを取得
+            const {data: activities} = await supabase
+                .from("activities")
+                .select("*")
+                .eq("owner_account_id", Number(TEST_ACCOUNT_1));
+
+            // 外部からの入金として記録されているか確認
+            expect(activities).toHaveLength(1);
+            expect(activities![0].source_account_id).toBeNull();  // ← 外部から
+            expect(activities![0].target_account_id).toBe(Number(TEST_ACCOUNT_1));
+            expect(activities![0].amount).toBe(5000);
         });
     });
 });
