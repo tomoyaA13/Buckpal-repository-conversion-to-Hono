@@ -217,6 +217,7 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
         amount: number,
         timestamp: Date = new Date("2024-12-01")
     ) {
+
         const {error} = await supabase.from("activities").insert([
             {
                 owner_account_id: Number(accountId),
@@ -360,10 +361,18 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
             // ===== Assert（検証）=====
 
             // 1. HTTPステータスコードが200 OK
+            // toBe(): プリミティブ値（数値）の比較
+            // - 数値、文字列、真偽値などの単純な値の比較には toBe() を使用
+            // - toEqual() でも動作するが、toBe() の方がシンプルで意図が明確
             expect(response.status).toBe(200);
 
             // 2. レスポンスボディの構造を検証
             const responseBody = await response.json();
+
+            // toEqual() を使う理由:
+            // - responseBody は毎回新しいオブジェクトとして生成される
+            // - 参照の同一性ではなく「中身が正しいか」を確認したい
+            // - toBe() を使うと参照が異なるため必ず失敗する
             expect(responseBody).toEqual({
                 success: true,
                 message: "Money transfer completed successfully",
