@@ -79,7 +79,7 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
         console.log("✅ Environment variables loaded:");
         console.log(`   SUPABASE_URL: ${supabaseUrl}`);
-        console.log(`   SUPABASE_SERVICE_ROLE_KEY: ${supabaseKey.substring(0, 20)}...`);
+        console.log(`   SUPABASE_PUBLISHABLE_KEY: ${supabaseKey.substring(0, 20)}...`);
 
         // ===== ローカルSupabaseクライアントを作成 =====
         // これでデータベースに接続できるようになる
