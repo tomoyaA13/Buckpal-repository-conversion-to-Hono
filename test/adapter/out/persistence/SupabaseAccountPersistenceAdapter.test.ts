@@ -175,7 +175,7 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
      * - activitiesテーブルに「入金アクティビティ」を1件追加する
      * - これにより、アカウントに指定した金額の残高ができる
      *
-     * @param accountId 対象アカウントID
+     * @param accountId 残高を追加する対象のアカウントID
      * @param amount 初期残高（円）
      * @param timestamp アクティビティのタイムスタンプ（デフォルト: 2024-12-01）
      */
@@ -185,7 +185,9 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
         timestamp: Date = new Date("2024-12-01")
     ) {
         // activitiesテーブルに「入金アクティビティ」を挿入
-        const { error } = await supabase.from("activities").insert([
+        const { error } = await supabase
+            .from("activities")
+            .insert([
             {
                 owner_account_id: Number(accountId),        // このアカウントに
                 source_account_id: Number(TEST_ACCOUNT_2),  // 外部から（送金元）
@@ -260,7 +262,9 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             // テスト用アクティビティを挿入
             // アクティビティ1: 100円の入金
             // アクティビティ2: 50円の出金
-            const { error: insertError } = await supabase.from("activities").insert([
+            const { error: insertError } = await supabase
+                .from("activities")
+                .insert([
                 {
                     owner_account_id: Number(TEST_ACCOUNT_1),  // このアカウントの取引
                     source_account_id: Number(TEST_ACCOUNT_2), // TEST_ACCOUNT_2から
