@@ -1,4 +1,5 @@
 /**
+ * https://developers.cloudflare.com/workers/testing/vitest-integration/write-your-first-test/
  * Cloudflare Workers テスト環境の型定義
  *
  * ProvidedEnv は cloudflare:test の env オブジェクトの型を定義します。
