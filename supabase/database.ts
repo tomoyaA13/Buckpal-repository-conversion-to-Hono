@@ -30,8 +30,8 @@ export type Database = {
           created_at: string | null
           id: number
           owner_account_id: number
-          source_account_id: number
-          target_account_id: number
+          source_account_id: number | null
+          target_account_id: number | null
           timestamp: string
         }
         Insert: {
@@ -39,8 +39,8 @@ export type Database = {
           created_at?: string | null
           id?: number
           owner_account_id: number
-          source_account_id: number
-          target_account_id: number
+          source_account_id?: number | null
+          target_account_id?: number | null
           timestamp: string
         }
         Update: {
@@ -48,8 +48,8 @@ export type Database = {
           created_at?: string | null
           id?: number
           owner_account_id?: number
-          source_account_id?: number
-          target_account_id?: number
+          source_account_id?: number | null
+          target_account_id?: number | null
           timestamp?: string
         }
         Relationships: [

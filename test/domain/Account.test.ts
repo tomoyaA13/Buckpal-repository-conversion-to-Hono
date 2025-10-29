@@ -198,4 +198,134 @@ describe("Account", () => {
         expect(account.calculateBalance().getAmount()).toBe(850n);
         expect(account.getActivityWindow().getActivities()).toHaveLength(4);
     });
+
+    // ========================================
+    // 【新規追加】nullable対応のテスト
+    // ========================================
+
+    describe("外部入金・外部出金のテスト", () => {
+        it("外部からの入金（source=null）を処理できる", () => {
+            // Arrange
+            const baselineBalance = Money.of(100);
+
+            // 外部からの入金アクティビティ（給与、ATM入金など）
+            const externalDeposit = Activity.withoutId(
+                accountId,
+                null,  // ← 外部から
+                accountId,
+                new Date(),
+                Money.of(500)
+            );
+
+            const window = new ActivityWindow(externalDeposit);
+            const account = Account.withId(accountId, baselineBalance, window);
+
+            // Act
+            const balance = account.calculateBalance();
+
+            // Assert
+            expect(balance.getAmount()).toBe(600n); // 100 + 500 = 600
+            expect(externalDeposit.isExternalDeposit()).toBe(true);
+            expect(externalDeposit.isExternalWithdrawal()).toBe(false);
+            expect(externalDeposit.isTransfer()).toBe(false);
+        });
+
+        it("外部への出金（target=null）を処理できる", () => {
+            // Arrange
+            const baselineBalance = Money.of(1000);
+
+            // 外部への出金アクティビティ（ATM出金、手数料など）
+            const externalWithdrawal = Activity.withoutId(
+                accountId,
+                accountId,
+                null,  // ← 外部へ
+                new Date(),
+                Money.of(200)
+            );
+
+            const window = new ActivityWindow(externalWithdrawal);
+            const account = Account.withId(accountId, baselineBalance, window);
+
+            // Act
+            const balance = account.calculateBalance();
+
+            // Assert
+            expect(balance.getAmount()).toBe(800n); // 1000 - 200 = 800
+            expect(externalWithdrawal.isExternalDeposit()).toBe(false);
+            expect(externalWithdrawal.isExternalWithdrawal()).toBe(true);
+            expect(externalWithdrawal.isTransfer()).toBe(false);
+        });
+
+        it("アカウント間送金はisTransfer()がtrueになる", () => {
+            // Arrange
+            const transfer = Activity.withoutId(
+                accountId,
+                accountId,
+                targetAccountId,
+                new Date(),
+                Money.of(100)
+            );
+
+            // Assert
+            expect(transfer.isExternalDeposit()).toBe(false);
+            expect(transfer.isExternalWithdrawal()).toBe(false);
+            expect(transfer.isTransfer()).toBe(true);
+        });
+
+        it("source と target の両方が null の場合はエラー", () => {
+            // Act & Assert
+            expect(() => {
+                Activity.withoutId(
+                    accountId,
+                    null,  // ← 両方null
+                    null,  // ← 両方null
+                    new Date(),
+                    Money.of(100)
+                );
+            }).toThrow("At least one of sourceAccountId or targetAccountId must be non-null");
+        });
+
+        it("外部入金と外部出金を組み合わせて処理できる", () => {
+            // Arrange
+            const baselineBalance = Money.of(500);
+
+            const externalDeposit = Activity.withoutId(
+                accountId,
+                null,
+                accountId,
+                new Date(),
+                Money.of(1000)
+            );
+
+            const transfer = Activity.withoutId(
+                accountId,
+                accountId,
+                targetAccountId,
+                new Date(),
+                Money.of(300)
+            );
+
+            const externalWithdrawal = Activity.withoutId(
+                accountId,
+                accountId,
+                null,
+                new Date(),
+                Money.of(100)
+            );
+
+            const window = new ActivityWindow(
+                externalDeposit,
+                transfer,
+                externalWithdrawal
+            );
+            const account = Account.withId(accountId, baselineBalance, window);
+
+            // Act
+            const balance = account.calculateBalance();
+
+            // Assert
+            // 500 (baseline) + 1000 (外部入金) - 300 (送金) - 100 (外部出金) = 1100
+            expect(balance.getAmount()).toBe(1100n);
+        });
+    });
 });
