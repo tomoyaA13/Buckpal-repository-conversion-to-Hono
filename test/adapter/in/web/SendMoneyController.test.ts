@@ -218,7 +218,7 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
         timestamp: Date = new Date("2024-12-01")
     ) {
 
-        const {error} = await supabase.from("activities").insert([
+        const {data,error} = await supabase.from("activities").insert([
             {
                 owner_account_id: Number(accountId),
                 source_account_id: null,  // ← 外部からの入金

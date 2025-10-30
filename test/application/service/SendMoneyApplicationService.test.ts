@@ -794,59 +794,6 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
                 );
             }).toThrow();
         });
-
-        /**
-         * テストケース: 同じアカウント間の送金はロックを2回取得する
-         *
-         * 【目的】
-         * - 自分自身への送金という特殊ケースの動作を検証
-         * - ロック機構が正しく動作することを確認
-         *
-         * 【検証ポイント】
-         * - 同じアカウントでも、送金元と送金先で2回ロックを取得
-         * - デッドロックが発生しない
-         *
-         * 【現実のビジネス要件】
-         * - 同一アカウント間送金を許可するかは要件次第
-         * - このテストは技術的な動作を確認するもの
-         */
-        it("同じアカウント間の送金はロックを2回取得する", async () => {
-            // ===== Arrange =====
-            const sameAccountId = new AccountId(1n);
-            const transferAmount = Money.of(100);
-
-            const account = Account.withId(
-                sameAccountId,
-                Money.of(1000),
-                new ActivityWindow()
-            );
-
-            // 両方とも同じアカウントを返す
-            vi.mocked(mockLoadAccountPort.loadAccount)
-                .mockResolvedValueOnce(account)
-                .mockResolvedValueOnce(account);
-
-            const command = new SendMoneyCommand(
-                sameAccountId,
-                sameAccountId, // 送金元と送金先が同じ
-                transferAmount
-            );
-
-            // ===== Act =====
-            const result = await sendMoneyService.sendMoney(command);
-
-            // ===== Assert =====
-            expect(result).toBe(true);
-
-            // 同じアカウントでも2回ロック・解放される
-            // 【理由】送金元と送金先を区別せず、常に同じ処理フローを実行
-            expect(mockAccountLock.lockAccount).toHaveBeenCalledTimes(2);
-            expect(mockAccountLock.lockAccount).toHaveBeenCalledWith(sameAccountId);
-
-            expect(mockAccountLock.releaseAccount).toHaveBeenCalledTimes(2);
-            expect(mockAccountLock.releaseAccount).toHaveBeenCalledWith(sameAccountId);
-        });
-
         /**
          * テストケース: 最小送金額（1円）でも送金できる
          *

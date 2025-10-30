@@ -48,11 +48,11 @@ export class ActivityWindow {
      */
     calculateBalance(accountId: AccountId): Money {
         const depositBalance = this.activities
-            .filter((a) => a.getTargetAccountId().equals(accountId))
+            .filter((a) => a.getTargetAccountId()?.equals(accountId))
             .reduce((sum, a) => sum.plus(a.getMoney()), Money.ZERO);
 
         const withdrawalBalance = this.activities
-            .filter((a) => a.getSourceAccountId().equals(accountId))
+            .filter((a) => a.getSourceAccountId()?.equals(accountId))
             .reduce((sum, a) => sum.plus(a.getMoney()), Money.ZERO);
 
         return depositBalance.minus(withdrawalBalance);
