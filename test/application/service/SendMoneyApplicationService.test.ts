@@ -226,14 +226,14 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             expect(mockLoadAccountPort.loadAccount).toHaveBeenNthCalledWith(
                 1, // 1回目の呼び出し
                 sourceAccountId,
-                expect.any(Date) // 基準日（アクティビティの読み込み範囲を決定）
+                expect.any(Date) // 基準日（アクティビティの読み込み範囲を決定） 型だけチェック（値は不問）
             );
 
             // 2回目の呼び出しで、送金先アカウントIDと基準日が渡されたか
             expect(mockLoadAccountPort.loadAccount).toHaveBeenNthCalledWith(
                 2, // 2回目の呼び出し
                 targetAccountId,
-                expect.any(Date)
+                expect.any(Date) // ← 型だけチェック（値は不問）
             );
 
             // 3. アカウントがロックされたか
