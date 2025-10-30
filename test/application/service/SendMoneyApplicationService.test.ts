@@ -209,14 +209,14 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
 
             // ===== Act（実行）=====
             // テスト対象のメソッドを実行
-            const result = await sendMoneyService.sendMoney(command);
+            const isSuccess = await sendMoneyService.sendMoney(command);
 
             // ===== Assert（検証）=====
             // 実行結果が期待通りか検証
 
             // 1. 送金が成功したか
             // sendMoney は成功時に true を返す
-            expect(result).toBe(true);
+            expect(isSuccess).toBe(true);
 
             // 2. loadAccount が2回呼ばれたか（送金元と送金先）
             expect(mockLoadAccountPort.loadAccount).toHaveBeenCalledTimes(2);
@@ -336,10 +336,10 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             );
 
             // ===== Act =====
-            const result = await sendMoneyService.sendMoney(command);
+            const isSuccess = await sendMoneyService.sendMoney(command);
 
             // ===== Assert =====
-            expect(result).toBe(true);
+            expect(isSuccess).toBe(true);
 
             // 残高の確認
             // 送金元: 2000000 - 1000000 = 1000000
@@ -402,13 +402,13 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             );
 
             // ===== Act =====
-            const result = await sendMoneyService.sendMoney(command);
+            const isSuccess = await sendMoneyService.sendMoney(command);
 
             // ===== Assert =====
 
             // 1. 送金が失敗したか
             // sendMoney は失敗時に false を返す
-            expect(result).toBe(false);
+            expect(isSuccess).toBe(false);
 
             // 2. updateActivities は呼ばれない（送金失敗のため）
             // 【重要】DBに不正なデータが書き込まれないことを保証
@@ -847,10 +847,10 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             );
 
             // ===== Act =====
-            const result = await sendMoneyService.sendMoney(command);
+            const isSuccess = await sendMoneyService.sendMoney(command);
 
             // ===== Assert =====
-            expect(result).toBe(true);
+            expect(isSuccess).toBe(true);
 
             // 残高の確認
             expect(sourceAccount.calculateBalance().getAmount()).toBe(999n); // 1000 - 1
@@ -925,11 +925,11 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
 
             // ===== Act =====
             // 送金処理を実行
-            const result = await sendMoneyService.sendMoney(command);
+            const isSuccess = await sendMoneyService.sendMoney(command);
 
             // ===== Assert =====
             // 1. 送金が成功したか
-            expect(result).toBe(true);
+            expect(isSuccess).toBe(true);
 
             // 2. Alice の残高が正しく減っているか
             // 10000 - 3000 = 7000
