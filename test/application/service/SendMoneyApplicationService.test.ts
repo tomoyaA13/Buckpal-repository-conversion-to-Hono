@@ -10,7 +10,7 @@ import { UpdateAccountStatePort, UpdateAccountStatePortToken } from "../../../sr
 import { AccountLock, AccountLockToken } from "../../../src/application/port/out/AccountLock";
 import { MoneyTransferProperties, MoneyTransferPropertiesToken } from "../../../src/application/domain/service/MoneyTransferProperties";
 import { SendMoneyDomainService } from "../../../src/application/domain/service/SendMoneyDomainService";
-import { ThresholdExceededException } from "../../../src/application/domain/service/ThresholdExceededException";
+import { ThresholdExceededException } from "../../../src/application/domain/exception/ThresholdExceededException";
 import { Account } from "../../../src/application/domain/model/Account";
 import { AccountId } from "../../../src/application/domain/model/Activity";
 import { ActivityWindow } from "../../../src/application/domain/model/ActivityWindow";

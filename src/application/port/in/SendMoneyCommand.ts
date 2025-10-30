@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {SameAccountTransferException} from "../../domain/exception/SameAccountTransferException";
 import { AccountId } from '../../domain/model/Activity';
 import { Money } from '../../domain/model/Money';
 
@@ -38,10 +39,17 @@ export class SendMoneyCommand {
       money,
     });
 
+
     if (!result.success) {
       throw new Error(
         `Invalid SendMoneyCommand: ${result.error.issues.map((e) => e.message).join(', ')}`
       );
     }
+
+    // ✅ 追加: 同一アカウント間の送金を禁止（ビジネスルール）
+    if (sourceAccountId.equals(targetAccountId)) {
+      throw new SameAccountTransferException(sourceAccountId);
+    }
+
   }
 }

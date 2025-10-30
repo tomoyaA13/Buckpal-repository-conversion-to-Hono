@@ -1,7 +1,8 @@
 import {zValidator} from '@hono/zod-validator';
 import {Hono} from 'hono';
 import {container} from 'tsyringe';
-import {ThresholdExceededException} from '../../../application/domain/service/ThresholdExceededException';
+import {SameAccountTransferException} from "../../../application/domain/exception/SameAccountTransferException";
+import {ThresholdExceededException} from '../../../application/domain/exception/ThresholdExceededException';
 import type {SendMoneyUseCase} from '../../../application/port/in/SendMoneyUseCase';
 import {SendMoneyUseCaseToken} from '../../../application/port/in/SendMoneyUseCase';
 import {toCommand, toErrorResponse, toSuccessResponse} from './mappers/SendMoneyMapper';
@@ -61,6 +62,7 @@ sendMoneyRouter.post(
                 );
             }
         } catch (error) {
+
             // エラーハンドリング
             if (error instanceof ThresholdExceededException) {
                 return c.json(
@@ -76,7 +78,19 @@ sendMoneyRouter.post(
                 );
             }
 
+            // ✅ 追加: 同一アカウント送金エラーのハンドリング
+            if (error instanceof SameAccountTransferException) {
+                return c.json(
+                    toErrorResponse(
+                        error.message,
+                        'SAME_ACCOUNT_TRANSFER'
+                    ),
+                    400
+                );
+            }
+
             if (error instanceof Error) {
+
                 return c.json(
                     toErrorResponse(
                         error.message,

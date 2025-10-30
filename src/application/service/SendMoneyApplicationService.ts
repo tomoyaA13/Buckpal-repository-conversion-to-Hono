@@ -1,7 +1,7 @@
 import {inject, injectable} from 'tsyringe';
+import {ThresholdExceededException} from '../domain/exception/ThresholdExceededException';
 import {MoneyTransferProperties, MoneyTransferPropertiesToken} from '../domain/service/MoneyTransferProperties';
 import {SendMoneyDomainService} from '../domain/service/SendMoneyDomainService';
-import {ThresholdExceededException} from '../domain/service/ThresholdExceededException';
 import {SendMoneyCommand} from '../port/in/SendMoneyCommand';
 import {SendMoneyUseCase} from '../port/in/SendMoneyUseCase';
 import {AccountLock, AccountLockToken} from '../port/out/AccountLock';
