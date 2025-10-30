@@ -36,6 +36,7 @@ sendMoneyRouter.post(
     async (c): Promise<Response> => {
         try {
             // 1. バリデーション済みのデータを取得（型安全）
+            // バリデーションに失敗すると 400 HTTP status code を返す
             const webRequest = c.req.valid('json');
 
             // 2. Web層のモデルをドメイン層のコマンドに変換

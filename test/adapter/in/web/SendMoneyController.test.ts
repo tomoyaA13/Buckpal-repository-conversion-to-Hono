@@ -340,7 +340,7 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
             // 送金先アカウント（Bさん）に500円の初期残高を設定
             await setupInitialBalance(TEST_ACCOUNT_TARGET, 500);
 
-            // リクエストボディ（JSON形式）
+            // リクエストボディ（JSON形式）500円送金
             const requestBody = {
                 sourceAccountId: TEST_ACCOUNT_SOURCE.toString(), // "999001"
                 targetAccountId: TEST_ACCOUNT_TARGET.toString(), // "999002"
