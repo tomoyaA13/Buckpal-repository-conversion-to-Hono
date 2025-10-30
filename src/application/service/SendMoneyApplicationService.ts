@@ -74,14 +74,14 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
         try {
             // ③ ビジネスロジック実行（ドメインサービスに委譲）
             // ✅ 変更: threshold を渡す
-            const success = this.domainService.executeTransfer(
+            const isSuccess = this.domainService.executeTransfer(
                 sourceAccount,
                 targetAccount,
                 command.money,
                 this.moneyTransferProperties.maximumTransferThreshold // ← 追加
             );
 
-            if (!success) {
+            if (!isSuccess) {
                 return false;
             }
 
