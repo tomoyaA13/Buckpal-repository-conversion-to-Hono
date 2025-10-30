@@ -72,8 +72,8 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
      * - テストデータは大きな数値にして、本番データと衝突しないようにする
      * - 999000番台は「テスト専用」とすぐわかる
      */
-    const TEST_ACCOUNT_SOURCE = 999001n; // 送金元アカウント（Aさん）
-    const TEST_ACCOUNT_TARGET = 999002n; // 送金先アカウント（Bさん）
+    const TEST_ACCOUNT_SOURCE = 998001n; // 送金元アカウント（Aさん）
+    const TEST_ACCOUNT_TARGET = 998002n; // 送金先アカウント（Bさん）
 
     /**
      * テスト用の環境変数（Cloudflare Workers Bindings）
