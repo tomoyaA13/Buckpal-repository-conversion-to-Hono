@@ -1,5 +1,4 @@
 import {inject, injectable} from 'tsyringe';
-import {ThresholdExceededException} from '../domain/exception/ThresholdExceededException';
 import {MoneyTransferProperties, MoneyTransferPropertiesToken} from '../domain/service/MoneyTransferProperties';
 import {SendMoneyDomainService} from '../domain/service/SendMoneyDomainService';
 import {SendMoneyCommand} from '../port/in/SendMoneyCommand';
@@ -16,17 +15,14 @@ import {UpdateAccountStatePort, UpdateAccountStatePortToken} from '../port/out/U
  * - 送信ポートを管理
  * - ドメインサービスを呼び出す
  * - トランザクション境界を定義
+ *
+ * 【責務の明確化】
+ * - ビジネスルールの検証 → ドメインサービスに委譲 ✅
+ * - データの取得・永続化 → このサービスで調整 ✅
+ * - トランザクション管理 → このサービスで制御 ✅
  */
 @injectable()
 export class SendMoneyApplicationService implements SendMoneyUseCase {
-    /**
-     * @inject が必要な理由:
-     * - TypeScriptの型情報（LoadAccountPort）→ interface なので実行時に消える（コンテナが LoadAccountPort interface が必要と言われても存在しないのでわからない）
-     * - トークン（LoadAccountPortToken）→ Symbol なので実行時に存在する
-     * - @inject → 「型の代わりにこのトークンを使って」という指示
-     *
-     * 注: SendMoneyDomainService はクラスだが、統一性のため全ての依存に @inject を使用
-     */
     constructor(
         @inject(SendMoneyDomainService)
         private readonly domainService: SendMoneyDomainService,
@@ -45,17 +41,12 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
      * 送金を実行（ユースケースの調整）
      */
     async sendMoney(command: SendMoneyCommand): Promise<boolean> {
-        // ① 事前検証: 限度額チェック
-        if (!this.domainService.isWithinThreshold(
-            command.money,
-            this.moneyTransferProperties.maximumTransferThreshold)) {
-            throw new ThresholdExceededException(
-                this.moneyTransferProperties.maximumTransferThreshold,
-                command.money
-            );
-        }
+        // ❌ 削除: 限度額チェック（ドメインサービスに移動）
+        // if (!this.domainService.isWithinThreshold(...)) {
+        //     throw new ThresholdExceededException(...);
+        // }
 
-        // ② データ取得: アカウントをロード
+        // ① データ取得: アカウントをロード
         const baselineDate = new Date();
         baselineDate.setDate(baselineDate.getDate() - 10);
 
@@ -72,34 +63,35 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
         const sourceAccountId = sourceAccount.getId();
         const targetAccountId = targetAccount.getId();
 
-
         if (!sourceAccountId || !targetAccountId) {
             throw new Error('Expected account ID not to be empty');
         }
 
-        // ③ リソースロック
+        // ② リソースロック
         this.accountLock.lockAccount(sourceAccountId);
         this.accountLock.lockAccount(targetAccountId);
 
         try {
-            // ④ ビジネスロジック実行（ドメインサービスに委譲）
+            // ③ ビジネスロジック実行（ドメインサービスに委譲）
+            // ✅ 変更: threshold を渡す
             const success = this.domainService.executeTransfer(
                 sourceAccount,
                 targetAccount,
-                command.money
+                command.money,
+                this.moneyTransferProperties.maximumTransferThreshold // ← 追加
             );
 
             if (!success) {
                 return false;
             }
 
-            // ⑤ 永続化: アカウント状態を更新
+            // ④ 永続化: アカウント状態を更新
             await this.updateAccountStatePort.updateActivities(sourceAccount);
             await this.updateAccountStatePort.updateActivities(targetAccount);
 
             return true;
         } finally {
-            // ⑥ リソース解放（必ず実行）
+            // ⑤ リソース解放（必ず実行）
             this.accountLock.releaseAccount(sourceAccountId);
             this.accountLock.releaseAccount(targetAccountId);
         }

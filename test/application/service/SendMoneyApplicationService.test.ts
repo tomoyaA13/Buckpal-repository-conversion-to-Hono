@@ -430,21 +430,27 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             expect(targetAccount.getNewActivities()).toHaveLength(0);
         });
 
-        /**
-         * テストケース: 限度額を超えた場合、ThresholdExceededExceptionが発生する
-         *
-         * 【シナリオ】
-         * - 送金額: 2000000円（限度額1000000円を超える）
-         * - 期待結果: ThresholdExceededException がスローされる
-         *
-         * 【検証ポイント】
-         * - アカウントの読み込み前に限度額チェックが行われる
-         * - 事前チェックで弾かれるため、無駄な処理が実行されない
-         */
         it("限度額を超えた場合、ThresholdExceededExceptionが発生する", async () => {
             // ===== Arrange =====
             const transferAmount = Money.of(2000000); // 限度額(1000000)を超える
 
+            // アカウントは十分な残高を持つ（限度額の問題であることを明確にするため）
+            const sourceAccount = Account.withId(
+                sourceAccountId,
+                Money.of(3000000), // 送金額より多い残高
+                new ActivityWindow()
+            );
+
+            const targetAccount = Account.withId(
+                targetAccountId,
+                Money.of(500),
+                new ActivityWindow()
+            );
+
+            vi.mocked(mockLoadAccountPort.loadAccount)
+                .mockResolvedValueOnce(sourceAccount)
+                .mockResolvedValueOnce(targetAccount);
+
             const command = new SendMoneyCommand(
                 sourceAccountId,
                 targetAccountId,
@@ -452,28 +458,41 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             );
 
             // ===== Act & Assert =====
-            // expect(...).rejects.toThrow(...): 非同期関数が例外を投げることを検証
             await expect(
                 sendMoneyService.sendMoney(command)
             ).rejects.toThrow(ThresholdExceededException);
 
-            // 事前チェックで弾かれるため、以下は呼ばれない
-            // 【重要】無駄なDBアクセスやロック取得を避ける（パフォーマンス最適化）
-            expect(mockLoadAccountPort.loadAccount).not.toHaveBeenCalled();
-            expect(mockAccountLock.lockAccount).not.toHaveBeenCalled();
+            // ✅ 変更: ドメインサービスでチェックされるため、アカウント読み込みとロック取得は実行される
+            expect(mockLoadAccountPort.loadAccount).toHaveBeenCalledTimes(2);
+            expect(mockAccountLock.lockAccount).toHaveBeenCalledTimes(2);
+
+            // エラーが発生したため、updateActivities は呼ばれない
             expect(mockUpdateAccountStatePort.updateActivities).not.toHaveBeenCalled();
+
+            // ✅ 追加: finally句でロックは必ず解放される
+            expect(mockAccountLock.releaseAccount).toHaveBeenCalledTimes(2);
         });
 
-        /**
-         * テストケース: 限度額を1円でも超えたらエラー
-         *
-         * 【目的】
-         * - 境界値テスト（1000000円はOK、1000001円はNG）
-         * - 例外オブジェクトの内容を詳細に検証
-         */
         it("限度額を1円でも超えたらエラー", async () => {
             // ===== Arrange =====
             const transferAmount = Money.of(1000001); // 限度額より1円多い
+
+            // ✅ 追加: アカウントのモックを設定
+            const sourceAccount = Account.withId(
+                sourceAccountId,
+                Money.of(2000000), // 十分な残高
+                new ActivityWindow()
+            );
+
+            const targetAccount = Account.withId(
+                targetAccountId,
+                Money.of(500),
+                new ActivityWindow()
+            );
+
+            vi.mocked(mockLoadAccountPort.loadAccount)
+                .mockResolvedValueOnce(sourceAccount)
+                .mockResolvedValueOnce(targetAccount);
 
             const command = new SendMoneyCommand(
                 sourceAccountId,
@@ -482,7 +501,6 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             );
 
             // ===== Act & Assert =====
-            // .catch((e) => e): 例外オブジェクトをキャッチして検証
             const error = await sendMoneyService
                 .sendMoney(command)
                 .catch((e) => e);
@@ -491,11 +509,12 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             expect(error).toBeInstanceOf(ThresholdExceededException);
 
             // 例外オブジェクトのプロパティを検証
-            // threshold: 限度額（1000000円）
             expect(error.threshold.getAmount()).toBe(1000000n);
-
-            // actual: 実際の送金額（1000001円）
             expect(error.actual.getAmount()).toBe(1000001n);
+
+            // ✅ 追加: ロックの取得と解放を確認
+            expect(mockAccountLock.lockAccount).toHaveBeenCalledTimes(2);
+            expect(mockAccountLock.releaseAccount).toHaveBeenCalledTimes(2);
         });
     });
 
