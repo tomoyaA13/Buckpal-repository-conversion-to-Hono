@@ -1,6 +1,8 @@
 import {injectable} from 'tsyringe';
+import {SameAccountTransferException} from "../exception/SameAccountTransferException";
 import {Account} from '../model/Account';
 import {Money} from '../model/Money';
+
 
 /**
  * 送金ドメインサービス(このドメインサービスは「送金の手順」という純粋なビジネスロジックだけに集中)
@@ -32,13 +34,28 @@ export class SendMoneyDomainService {
             throw new Error('Account ID must not be empty');
         }
 
-        // ビジネスロジック1: 送金元から引き出し
-        if (!sourceAccount.withdraw(money, targetAccountId)) {
+        // ✅ ビジネスルール0: 同一アカウント間の送金を禁止
+        //
+        // 【なぜドメインサービスに配置？】
+        // - 特定のアカウントに紐づかない（送金全体のルール）
+        // - ビジネスの専門家と議論できる
+        //   「同じアカウント間の送金を許可すべきですか？」→ 業務上の判断
+        // - 他のビジネスルール（限度額チェック）と同じ性質
+        //
+        // 【判断基準の適用】
+        // 銀行員に「同一アカウント送金を許可すべきですか」と質問できる
+        // → これは業務上の意思決定事項
+        // → ドメインサービスに配置すべき
+        if (sourceAccountId.equals(targetAccountId)) {
+            throw new SameAccountTransferException(sourceAccountId);
+        }
 
+        // ビジネスルール1: 送金元から引き出し
+        if (!sourceAccount.withdraw(money, targetAccountId)) {
             return false;
         }
 
-        // ビジネスロジック2: 送金先に入金
+        // ビジネスルール2: 送金先に入金
         if (!targetAccount.deposit(money, sourceAccountId)) {
             // ロールバック: 引き出しを取り消し
             sourceAccount.deposit(money, targetAccountId);
