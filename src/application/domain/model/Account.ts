@@ -1,3 +1,4 @@
+import {InsufficientBalanceException} from "../exception/InsufficientBalanceException";
 import type {AccountId} from './Activity';
 import { Activity} from './Activity';
 import type {ActivityWindow} from './ActivityWindow';
@@ -66,13 +67,22 @@ export class Account {
         );
     }
 
-    withdraw(money: Money, targetAccountId: AccountId): boolean {
+    /**
+     * 出金を実行
+     *
+     * @throws InsufficientBalanceException 残高不足の場合
+     */
+    withdraw(money: Money, targetAccountId: AccountId): void {
         if (!this.id) {
             throw new Error('Cannot withdraw without account ID');
         }
 
         if (!this.mayWithdraw(money)) {
-            return false;
+            throw new InsufficientBalanceException(
+                this.id,
+                money,
+                this.calculateBalance()
+            );
         }
 
         const withdrawalActivity = Activity.withoutId(
@@ -84,14 +94,13 @@ export class Account {
         );
 
         this.activityWindow.addActivity(withdrawalActivity);
-        return true;
     }
 
     private mayWithdraw(money: Money): boolean {
         return this.calculateBalance().minus(money).isPositiveOrZero();
     }
 
-    deposit(money: Money, sourceAccountId: AccountId): boolean {
+    deposit(money: Money, sourceAccountId: AccountId): void {
         if (!this.id) {
             throw new Error('Cannot deposit without account ID');
         }
@@ -105,6 +114,9 @@ export class Account {
         );
 
         this.activityWindow.addActivity(depositActivity);
-        return true;
     }
+
+
+
+
 }

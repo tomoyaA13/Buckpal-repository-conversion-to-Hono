@@ -37,15 +37,16 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
     ) {
     }
 
+
     /**
      * 送金を実行（ユースケースの調整）
+     *
+     * @throws SameAccountTransferException 同一アカウント送金の場合
+     * @throws ThresholdExceededException 限度額超過の場合
+     * @throws InsufficientBalanceException 残高不足の場合
+     * @throws Error その他のエラー
      */
-    async sendMoney(command: SendMoneyCommand): Promise<boolean> {
-        // ❌ 削除: 限度額チェック（ドメインサービスに移動）
-        // if (!this.domainService.isWithinThreshold(...)) {
-        //     throw new ThresholdExceededException(...);
-        // }
-
+    async sendMoney(command: SendMoneyCommand): Promise<void> {
         // ① データ取得: アカウントをロード
         const baselineDate = new Date();
         baselineDate.setDate(baselineDate.getDate() - 10);
@@ -72,24 +73,19 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
         this.accountLock.lockAccount(targetAccountId);
 
         try {
-            // ③ ビジネスロジック実行（ドメインサービスに委譲）
-            // ✅ 変更: threshold を渡す
-            const isSuccess = this.domainService.executeTransfer(
+            // ③ ビジネスロジック実行（例外が throw される）
+            this.domainService.executeTransfer(
                 sourceAccount,
                 targetAccount,
                 command.money,
-                this.moneyTransferProperties.maximumTransferThreshold // ← 追加
+                this.moneyTransferProperties.maximumTransferThreshold
             );
-
-            if (!isSuccess) {
-                return false;
-            }
 
             // ④ 永続化: アカウント状態を更新
             await this.updateAccountStatePort.updateActivities(sourceAccount);
             await this.updateAccountStatePort.updateActivities(targetAccount);
 
-            return true;
+            // ✅ 成功時は何も返さない（void）
         } finally {
             // ⑤ リソース解放（必ず実行）
             this.accountLock.releaseAccount(sourceAccountId);

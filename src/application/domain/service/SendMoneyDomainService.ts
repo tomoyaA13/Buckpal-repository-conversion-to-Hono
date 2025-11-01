@@ -18,18 +18,16 @@ export class SendMoneyDomainService {
     /**
      * 送金トランザクションを実行
      *
-     * @param sourceAccount 送金元アカウント
-     * @param targetAccount 送金先アカウント
-     * @param money 送金額
-     * @param threshold 送金限度額
-     * @returns 送金成功時true、失敗時false
+     * @throws SameAccountTransferException 同一アカウント送金の場合
+     * @throws ThresholdExceededException 限度額超過の場合
+     * @throws InsufficientBalanceException 残高不足の場合
      */
     executeTransfer(
         sourceAccount: Account,
         targetAccount: Account,
         money: Money,
         threshold: Money
-    ): boolean {
+    ): void {
         const sourceAccountId = sourceAccount.getId();
         const targetAccountId = targetAccount.getId();
 
@@ -37,51 +35,23 @@ export class SendMoneyDomainService {
             throw new Error('Account ID must not be empty');
         }
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 送金ビジネスルールの検証（ドメインサービスに集約）
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-        // ✅ ビジネスルール1: 同一アカウント間の送金を禁止
-        //
-        // 【なぜドメインサービスに配置？】
-        // - 特定のアカウントに紐づかない（送金全体のルール）
-        // - ビジネスの専門家と議論できる
-        //   銀行員への質問: 「同じアカウント間の送金を許可すべきですか？」
-        //   → 業務上の判断が必要 → ドメインサービスに配置
+        // ビジネスルール1: 同一アカウント間の送金を禁止
         if (sourceAccountId.equals(targetAccountId)) {
             throw new SameAccountTransferException(sourceAccountId);
         }
 
-        // ✅ ビジネスルール2: 送金限度額のチェック
-        //
-        // 【なぜドメインサービスに配置？】
-        // - 特定のアカウントに紐づかない（送金全体のポリシー）
-        // - ビジネスの専門家と議論できる
-        //   銀行員への質問: 「一回の送金の限度額は100万円で良いですか？」
-        //   → 業務上の判断が必要 → ドメインサービスに配置
+        // ビジネスルール2: 送金限度額のチェック
         if (money.isGreaterThan(threshold)) {
             throw new ThresholdExceededException(threshold, money);
         }
 
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 送金トランザクションの実行
-        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // ビジネスルール3: 送金元から引き出し（残高チェック含む）
+        sourceAccount.withdraw(money, targetAccountId);
 
-        // ビジネスロジック3: 送金元から引き出し
-        // （残高チェックはAccount内部で実施）
-        if (!sourceAccount.withdraw(money, targetAccountId)) {
-            return false;
-        }
-
-        // ビジネスロジック4: 送金先に入金
-        if (!targetAccount.deposit(money, sourceAccountId)) {
-            // ロールバック: 引き出しを取り消し
-            sourceAccount.deposit(money, targetAccountId);
-            return false;
-        }
-
-        return true;
+        // ビジネスルール4: 送金先に入金
+        targetAccount.deposit(money, sourceAccountId);
     }
+}
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 判断基準：ビジネスの専門家と議論できるか
@@ -101,4 +71,3 @@ export class SendMoneyDomainService {
     // - 「送金処理のトランザクション分離レベルはREAD COMMITTEDで良いですか？」
     // - 「手数料のデータを、どのテーブルに保存すべきですか？」
     // → これらは技術的な実装の詳細で、銀行員には意味が通じない
-}

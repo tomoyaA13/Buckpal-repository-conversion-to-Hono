@@ -3,6 +3,7 @@ import {AccountId, Activity} from "../../src/application/domain/model/Activity";
 import {Money} from "../../src/application/domain/model/Money";
 import {ActivityWindow} from "../../src/application/domain/model/ActivityWindow";
 import {Account} from "../../src/application/domain/model/Account";
+import {InsufficientBalanceException} from "../../src/application/domain/exception/InsufficientBalanceException";
 
 
 describe("Account", () => {
@@ -85,10 +86,10 @@ describe("Account", () => {
         const account = Account.withId(accountId, baselineBalance, window);
 
         // Act
-        const success = account.withdraw(Money.of(100), targetAccountId);
+        // ✅ 修正: withdraw() は void を返す（成功時は例外を投げない）
+        account.withdraw(Money.of(100), targetAccountId);
 
         // Assert
-        expect(success).toBe(true);
         expect(account.getActivityWindow().getActivities()).toHaveLength(1);
 
         // 残高確認: 555 - 100 = 455
@@ -101,11 +102,13 @@ describe("Account", () => {
         const window = new ActivityWindow();
         const account = Account.withId(accountId, baselineBalance, window);
 
-        // Act
-        const success = account.withdraw(Money.of(200), targetAccountId);
+        // Act & Assert
+        // ✅ 修正: 例外が throw されることを期待
+        expect(() => {
+            account.withdraw(Money.of(200), targetAccountId);
+        }).toThrow(InsufficientBalanceException);
 
-        // Assert
-        expect(success).toBe(false);
+        // アクティビティは作成されない（例外が投げられたため）
         expect(account.getActivityWindow().getActivities()).toHaveLength(0);
 
         // 残高は変わらない
@@ -119,10 +122,10 @@ describe("Account", () => {
         const account = Account.withId(accountId, baselineBalance, window);
 
         // Act
-        const success = account.withdraw(Money.of(100), targetAccountId);
+        // ✅ 修正: withdraw() は void を返す
+        account.withdraw(Money.of(100), targetAccountId);
 
         // Assert
-        expect(success).toBe(true);
         expect(account.calculateBalance().getAmount()).toBe(0n);
     });
 
@@ -143,10 +146,10 @@ describe("Account", () => {
         const account = Account.withId(accountId, baselineBalance, window);
 
         // Act
-        const success = account.deposit(Money.of(100), sourceAccountId);
+        // ✅ 修正: deposit() は void を返す
+        account.deposit(Money.of(100), sourceAccountId);
 
         // Assert
-        expect(success).toBe(true);
         expect(account.getActivityWindow().getActivities()).toHaveLength(1);
 
         // 残高確認: 555 + 100 = 655
