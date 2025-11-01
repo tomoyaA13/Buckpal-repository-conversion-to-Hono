@@ -9,14 +9,14 @@ import { SendMoneyUseCaseToken} from '../../../application/port/in/SendMoneyUseC
 import {toCommand, toErrorResponse, toSuccessResponse} from './mappers/SendMoneyMapper';
 import {SendMoneyWebRequestSchema} from "./models/SendMoneyWebRequest";
 
-const app = new Hono();
+export const sendMoneyRouter = new Hono();
 
 /**
  * POST /api/accounts/send
  * JSONボディで送金リクエストを受け付ける
  */
-app.post(
-    '/api/accounts/send',
+sendMoneyRouter.post(
+    '/accounts/send',
     zValidator('json', SendMoneyWebRequestSchema),
     async (c): Promise<Response> => {
         try {
@@ -100,5 +100,3 @@ app.post(
         }
     }
 );
-
-export default app;

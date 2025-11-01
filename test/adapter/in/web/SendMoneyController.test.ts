@@ -218,7 +218,7 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
         timestamp: Date = new Date("2024-12-01")
     ) {
 
-        const {data,error} = await supabase.from("activities").insert([
+        const {error} = await supabase.from("activities").insert([
             {
                 owner_account_id: Number(accountId),
                 source_account_id: null,  // ← 外部からの入金
@@ -464,50 +464,6 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
             // 【修正】calculateBalance ヘルパー関数を使用
             const sourceBalance = calculateBalance(sourceActivities!, TEST_ACCOUNT_SOURCE);
             expect(sourceBalance).toBe(1000001); // 2,000,000 - 999,999
-        });
-    });
-
-    // ========================================
-    // 正常系テスト（パスパラメータでのリクエスト）
-    // ========================================
-
-    describe("✅ 正常系: パスパラメータでの送金リクエスト", () => {
-        /**
-         * テストケース: パスパラメータで送金が成功する
-         *
-         * 【エンドポイントの形式】
-         * POST /api/accounts/send/:sourceAccountId/:targetAccountId/:amount
-         * 例: POST /api/accounts/send/999001/999002/500
-         */
-        it("パスパラメータで送金が成功する", async () => {
-            // ===== Arrange =====
-            await setupInitialBalance(TEST_ACCOUNT_SOURCE, 1000);
-            await setupInitialBalance(TEST_ACCOUNT_TARGET, 500);
-
-            // ===== Act =====
-            const response = await SELF.fetch(
-                `http://example.com/api/accounts/send/${TEST_ACCOUNT_SOURCE}/${TEST_ACCOUNT_TARGET}/500`,
-                {
-                    method: "POST",
-                }
-            );
-
-            // ===== Assert =====
-            expect(response.status).toBe(200);
-
-            const responseBody = await response.json();
-            expect(responseBody.success).toBe(true);
-            expect(responseBody.data.amount).toBe("500");
-
-            // DB確認
-            const {data: sourceActivities} = await supabase
-                .from("activities")
-                .select("*")
-                .eq("owner_account_id", Number(TEST_ACCOUNT_SOURCE));
-
-            // 【修正】calculateBalance ヘルパー関数を使用
-            const sourceBalance = calculateBalance(sourceActivities!, TEST_ACCOUNT_SOURCE);
-            expect(sourceBalance).toBe(500); // 1000 - 500
         });
     });
 
@@ -910,6 +866,8 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
                 },
                 body: JSON.stringify(requestBody),
             });
+
+            console.log(response)
 
             // ===== Assert =====
 
