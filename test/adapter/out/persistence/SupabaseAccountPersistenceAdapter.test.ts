@@ -21,6 +21,7 @@ import {AccountId} from "../../../../src/application/domain/model/Activity";
 import {Money} from "../../../../src/application/domain/model/Money";
 // ドメインモデル: ビジネスロジックの中心となるクラス
 import type {Database} from "../../../../supabase/database";
+import {InsufficientBalanceException} from "../../../../src/application/domain/exception/InsufficientBalanceException";
 // TypeScript型定義: Supabaseのテーブル構造を型安全に扱うため
 
 /**
@@ -217,6 +218,7 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
         console.log(`✅ Initial balance set: Account ${accountId} = ${amount}円 (external deposit)`);
     }
+
     // ========================================
     // loadAccount のテスト
     // 【目的】アダプターが正しくデータベースからアカウントを読み込めるかテスト
@@ -442,8 +444,7 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             // ===== Act =====
             // アカウントに操作を実行（メモリ上で100円引き出す）
             // 注: この時点ではまだDBには保存されていない！
-            const success = account.withdraw(Money.of(100), targetAccountId);
-            expect(success).toBe(true); // 引き出しが成功したか
+            account.withdraw(Money.of(100), targetAccountId);
 
             // updateActivities()を呼び出してDBに保存
             await adapter.updateActivities(account);
@@ -499,14 +500,10 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
             // ===== Act =====
             // 複数の操作を実行（すべてメモリ上で）
-            const withdraw1 = account.withdraw(Money.of(100), targetAccountId); // 500 - 100 = 400
-            const deposit1 = account.deposit(Money.of(50), targetAccountId);    // 400 + 50 = 450
-            const withdraw2 = account.withdraw(Money.of(30), targetAccountId);  // 450 - 30 = 420
+            account.withdraw(Money.of(100), targetAccountId); // 500 - 100 = 400
+            account.deposit(Money.of(50), targetAccountId);    // 400 + 50 = 450
+            account.withdraw(Money.of(30), targetAccountId);  // 450 - 30 = 420
 
-            // すべての操作が成功したか確認
-            expect(withdraw1).toBe(true);
-            expect(deposit1).toBe(true);
-            expect(withdraw2).toBe(true);
 
             // 一度にDBに保存
             await adapter.updateActivities(account);
@@ -595,14 +592,11 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
             const account = await adapter.loadAccount(accountId, baselineDate);
             expect(account.calculateBalance().getAmount()).toBe(50n);
 
-            // ===== Act =====
+            // ===== Act & Assert=====
             // 残高50円しかないのに100円引き出そうとする
-            // → ドメインロジックが「残高不足」と判断して false を返すはず
-            const success = account.withdraw(Money.of(100), targetAccountId);
-
-            // ===== Assert =====
-            // 引き出しが失敗することを確認
-            expect(success).toBe(false);
+            expect(() => {
+                account.withdraw(Money.of(100), targetAccountId);
+            }).toThrow(InsufficientBalanceException);
 
             // updateActivities()を呼んでも、失敗した操作はDBに保存されない
             await adapter.updateActivities(account);
@@ -663,8 +657,7 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
             // ===== 2. 操作を実行 =====
             // （ユーザーが「100円送金」ボタンを押す）
-            const success = account.withdraw(Money.of(100), targetAccountId);
-            expect(success).toBe(true); // 成功したか確認
+            account.withdraw(Money.of(100), targetAccountId);
 
             // ===== Act =====
             // ===== 3. 保存 =====
@@ -731,8 +724,7 @@ describe("SupabaseAccountPersistenceAdapter（統合テスト - ローカルDB�
 
             // ===== Act =====
             // ===== Aさんが3,000円を引き出す =====
-            const success = accountA.withdraw(Money.of(3000), accountIdB);
-            expect(success).toBe(true); // 引き出しが成功したか
+            accountA.withdraw(Money.of(3000), accountIdB);
 
             // ===== DBに保存 =====
             await adapter.updateActivities(accountA);
