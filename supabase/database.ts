@@ -11,15 +11,15 @@ export type Database = {
     Tables: {
       accounts: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: number
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id: number
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: number
         }
         Relationships: []
@@ -27,7 +27,7 @@ export type Database = {
       activities: {
         Row: {
           amount: number
-          created_at: string | null
+          created_at: string
           id: number
           owner_account_id: number
           source_account_id: number | null
@@ -36,7 +36,7 @@ export type Database = {
         }
         Insert: {
           amount: number
-          created_at?: string | null
+          created_at?: string
           id?: number
           owner_account_id: number
           source_account_id?: number | null
@@ -45,7 +45,7 @@ export type Database = {
         }
         Update: {
           amount?: number
-          created_at?: string | null
+          created_at?: string
           id?: number
           owner_account_id?: number
           source_account_id?: number | null
