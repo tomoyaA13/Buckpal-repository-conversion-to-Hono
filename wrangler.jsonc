@@ -3,9 +3,9 @@
   "name": "buckpal-repository-conversion-to-hono",
   "main": "src/index.ts",
   "compatibility_date": "2025-10-11"
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
+//   "compatibility_flags": [
+//     "nodejs_compat"
+//   ],
   // "vars": {
   //   "MY_VAR": "my-variable"
   // },

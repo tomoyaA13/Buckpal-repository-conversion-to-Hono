@@ -15,7 +15,7 @@ export interface SendMoneyUseCase {
      * @param command 送金コマンド
      * @returns 送金が成功したかどうか
      */
-    sendMoney(command: SendMoneyCommand): Promise<boolean>;
+    sendMoney(command: SendMoneyCommand): Promise<void>;
 }
 
 /**

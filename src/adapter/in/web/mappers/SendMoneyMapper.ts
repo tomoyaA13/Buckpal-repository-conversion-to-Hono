@@ -18,17 +18,12 @@ import type { SendMoneyWebResponse } from '../models/SendMoneyWebResponse';
  * Web層の文字列データをドメイン層の値オブジェクトに変換
  */
 export function toCommand(request: SendMoneyWebRequest): SendMoneyCommand {
-  try {
     const sourceAccountId = new AccountId(BigInt(request.sourceAccountId));
     const targetAccountId = new AccountId(BigInt(request.targetAccountId));
     const money = Money.of(BigInt(request.amount));
 
     return new SendMoneyCommand(sourceAccountId, targetAccountId, money);
-  } catch (error) {
-    throw new Error(
-        `Failed to map web request to command: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
+
 }
 
 /**

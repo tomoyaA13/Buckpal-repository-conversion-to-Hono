@@ -18,8 +18,7 @@ import {toDomain, toActivityRecords, calculateBaselineBalance} from './mappers/A
  * 5. 「何を保存するか」の判断（ビジネスロジック）
  */
 @injectable()
-export class SupabaseAccountPersistenceAdapter
-    implements LoadAccountPort, UpdateAccountStatePort {
+export class SupabaseAccountPersistenceAdapter implements LoadAccountPort, UpdateAccountStatePort {
 
     constructor(
         @inject(SupabaseClientToken) private readonly supabase: TypedSupabaseClient
