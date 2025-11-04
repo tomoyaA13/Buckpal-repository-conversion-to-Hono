@@ -6,4 +6,5 @@ export interface CloudflareBindings {
     USE_SUPABASE: string;
     SUPABASE_URL: string;
     SUPABASE_PUBLISHABLE_KEY: string;
+    RESEND_API_KEY: string;
 }

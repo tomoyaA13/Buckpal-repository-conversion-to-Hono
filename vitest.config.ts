@@ -1,16 +1,16 @@
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
+import {defineWorkersConfig} from "@cloudflare/vitest-pool-workers/config";
+import {nodePolyfills} from "vite-plugin-node-polyfills";
 
 export default defineWorkersConfig({
     test: {
         poolOptions: {
             workers: {
                 singleWorker: true,
-                wrangler: { configPath: "./wrangler.jsonc" },
+                wrangler: {configPath: "./wrangler.jsonc"},
                 miniflare: {
                     bindings: {
                         SUPABASE_URL: "http://127.0.0.1:54321",
-                        SUPABASE_PUBLISHABLE_KEY:'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
+                        SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
                     },
                 },
             },

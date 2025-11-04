@@ -14,14 +14,14 @@ import {createClient} from "@supabase/supabase-js";
 // Supabaseデータベースに接続するためのクライアントライブラリ
 import {
     SupabaseAccountPersistenceAdapter
-} from "../../../../src/adapter/out/persistence/SupabaseAccountPersistenceAdapter";
+} from "../../../../src/account/adapter/out/persistence/SupabaseAccountPersistenceAdapter";
 // テスト対象: アカウントデータをSupabaseに保存/読み込みするアダプター
 // これがヘキサゴナルアーキテクチャの「アウトバウンドアダプター」です
-import {AccountId} from "../../../../src/application/domain/model/Activity";
-import {Money} from "../../../../src/application/domain/model/Money";
+import {AccountId} from "../../../../src/account/application/domain/model/Activity";
+import {Money} from "../../../../src/account/application/domain/model/Money";
 // ドメインモデル: ビジネスロジックの中心となるクラス
 import type {Database} from "../../../../supabase/database";
-import {InsufficientBalanceException} from "../../../../src/application/domain/exception/InsufficientBalanceException";
+import {InsufficientBalanceException} from "../../../../src/account/application/domain/exception/InsufficientBalanceException";
 // TypeScript型定義: Supabaseのテーブル構造を型安全に扱うため
 
 /**

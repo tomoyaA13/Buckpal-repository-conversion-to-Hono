@@ -1,7 +1,7 @@
 
 import { describe, it, expect } from "vitest";
-import {AccountId, Activity, ActivityId} from "../../src/application/domain/model/Activity";
-import {Money} from "../../src/application/domain/model/Money";
+import {AccountId, Activity, ActivityId} from "../../src/account/application/domain/model/Activity";
+import {Money} from "../../src/account/application/domain/model/Money";
 
 
 describe("ActivityId", () => {

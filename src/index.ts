@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import {Hono} from 'hono';
 import {container} from "tsyringe";
-import {sendMoneyRouter} from "./adapter/in/web/SendMoneyController";
+import {sendMoneyRouter} from "./account/adapter/in/web/SendMoneyController";
 import {setupContainer} from './config/container';
 import type {DatabaseConfig} from "./config/types";
 import {DatabaseConfigToken} from "./config/types";

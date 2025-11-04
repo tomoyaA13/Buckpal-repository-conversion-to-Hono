@@ -2,20 +2,20 @@ import "reflect-metadata"
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { container } from "tsyringe";
-import { SendMoneyApplicationService } from "../../../src/application/service/SendMoneyApplicationService";
-import { SendMoneyCommand } from "../../../src/application/port/in/SendMoneyCommand";
-import { SendMoneyUseCaseToken } from "../../../src/application/port/in/SendMoneyUseCase";
-import { LoadAccountPort, LoadAccountPortToken } from "../../../src/application/port/out/LoadAccountPort";
-import { UpdateAccountStatePort, UpdateAccountStatePortToken } from "../../../src/application/port/out/UpdateAccountStatePort";
-import { AccountLock, AccountLockToken } from "../../../src/application/port/out/AccountLock";
-import { MoneyTransferProperties, MoneyTransferPropertiesToken } from "../../../src/application/domain/service/MoneyTransferProperties";
-import { SendMoneyDomainService } from "../../../src/application/domain/service/SendMoneyDomainService";
-import { ThresholdExceededException } from "../../../src/application/domain/exception/ThresholdExceededException";
-import { Account } from "../../../src/application/domain/model/Account";
-import { AccountId } from "../../../src/application/domain/model/Activity";
-import { ActivityWindow } from "../../../src/application/domain/model/ActivityWindow";
-import { Money } from "../../../src/application/domain/model/Money";
-import {InsufficientBalanceException} from "../../../src/application/domain/exception/InsufficientBalanceException";
+import { SendMoneyApplicationService } from "../../../src/account/application/service/SendMoneyApplicationService";
+import { SendMoneyCommand } from "../../../src/account/application/port/in/SendMoneyCommand";
+import { SendMoneyUseCaseToken } from "../../../src/account/application/port/in/SendMoneyUseCase";
+import { LoadAccountPort, LoadAccountPortToken } from "../../../src/account/application/port/out/LoadAccountPort";
+import { UpdateAccountStatePort, UpdateAccountStatePortToken } from "../../../src/account/application/port/out/UpdateAccountStatePort";
+import { AccountLock, AccountLockToken } from "../../../src/account/application/port/out/AccountLock";
+import { MoneyTransferProperties, MoneyTransferPropertiesToken } from "../../../src/account/application/domain/service/MoneyTransferProperties";
+import { SendMoneyDomainService } from "../../../src/account/application/domain/service/SendMoneyDomainService";
+import { ThresholdExceededException } from "../../../src/account/application/domain/exception/ThresholdExceededException";
+import { Account } from "../../../src/account/application/domain/model/Account";
+import { AccountId } from "../../../src/account/application/domain/model/Activity";
+import { ActivityWindow } from "../../../src/account/application/domain/model/ActivityWindow";
+import { Money } from "../../../src/account/application/domain/model/Money";
+import {InsufficientBalanceException} from "../../../src/account/application/domain/exception/InsufficientBalanceException";
 
 /**
  * SendMoneyApplicationService の統合テスト

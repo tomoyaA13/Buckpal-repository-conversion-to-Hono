@@ -19,3 +19,5 @@ export type TypedSupabaseClient = SupabaseClient<Database>;
  */
 export const DatabaseConfigToken = Symbol('DatabaseConfig');
 export const SupabaseClientToken = Symbol('SupabaseClient');
+
+export const EventBusToken = Symbol('EventBus');

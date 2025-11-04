@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {Money} from "../../src/application/domain/model/Money";
+import {Money} from "../../src/account/application/domain/model/Money";
 
 
 describe("Money", () => {

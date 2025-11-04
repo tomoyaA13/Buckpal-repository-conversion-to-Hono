@@ -18,13 +18,18 @@
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.76.1",
     "hono": "^4.9.11",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.4.0",
     "tsyringe": "^4.10.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.10.0",
     "@hono/eslint-config": "^2.0.3",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "@vitest/coverage-v8": "^4.0.3",
     "@vitest/ui": "^4.0.3",
     "eslint": "^9.38.0",
