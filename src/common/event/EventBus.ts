@@ -39,7 +39,7 @@ export class EventBus {
      * キー: イベントタイプ（例: 'MoneyTransferred'）
      * 値: ハンドラーの配列（複数の購読者をサポート）
      */
-    private handlers = new Map<string, EventHandler<any>[]>()
+    private eventTypeToHandlers = new Map<string, EventHandler<any>[]>()
 
     /**
      * イベントを購読する
@@ -58,9 +58,9 @@ export class EventBus {
         eventType: string,
         handler: EventHandler<T>
     ): void {
-        const handlers = this.handlers.get(eventType) || []
+        const handlers = this.eventTypeToHandlers.get(eventType) || []
         handlers.push(handler)
-        this.handlers.set(eventType, handlers)
+        this.eventTypeToHandlers.set(eventType, handlers)
 
         console.log(`📝 Subscribed to event: ${eventType}`)
     }
@@ -82,7 +82,7 @@ export class EventBus {
      * ```
      */
     async publish<T extends DomainEvent>(event: T): Promise<void> {
-        const handlers = this.handlers.get(event.eventType) || []
+        const handlers = this.eventTypeToHandlers.get(event.eventType) || []
 
         if (handlers.length === 0) {
             console.log(`⚠️  No handlers for event: ${event.eventType}`)
@@ -111,7 +111,7 @@ export class EventBus {
      * 全てのハンドラーをクリア（主にテスト用）
      */
     clear(): void {
-        this.handlers.clear()
+        this.eventTypeToHandlers.clear()
         console.log('🗑️  EventBus cleared')
     }
 }
