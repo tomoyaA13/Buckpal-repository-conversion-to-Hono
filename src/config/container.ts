@@ -26,30 +26,30 @@
  */
 
 import 'reflect-metadata'; // tsyringe が必要とするメタデータ機能を有効化
-
-import { createClient } from '@supabase/supabase-js';
-import { container } from 'tsyringe';
+import {createClient} from '@supabase/supabase-js';
+import {container} from 'tsyringe';
 import type {Database} from "../../supabase/database";
-import { InMemoryAccountPersistenceAdapter } from '../account/adapter/out/persistence/InMemoryAccountPersistenceAdapter';
-import { NoOpAccountLock } from '../account/adapter/out/persistence/NoOpAccountLock';
-import { SupabaseAccountPersistenceAdapter } from '../account/adapter/out/persistence/SupabaseAccountPersistenceAdapter';
-import { Money } from '../account/application/domain/model/Money';
-import { MoneyTransferProperties, MoneyTransferPropertiesToken } from '../account/application/domain/service/MoneyTransferProperties';
-import { SendMoneyDomainService } from '../account/application/domain/service/SendMoneyDomainService';
-import { SendMoneyUseCaseToken } from '../account/application/port/in/SendMoneyUseCase';
-import { AccountLockToken } from '../account/application/port/out/AccountLock';
-import { LoadAccountPortToken } from '../account/application/port/out/LoadAccountPort';
-import { UpdateAccountStatePortToken } from '../account/application/port/out/UpdateAccountStatePort';
-import { SendMoneyApplicationService } from '../account/application/service/SendMoneyApplicationService';
+import {InMemoryAccountPersistenceAdapter} from '../account/adapter/out/persistence/InMemoryAccountPersistenceAdapter';
+import {NoOpAccountLock} from '../account/adapter/out/persistence/NoOpAccountLock';
+import {SupabaseAccountPersistenceAdapter} from '../account/adapter/out/persistence/SupabaseAccountPersistenceAdapter';
+import {Money} from '../account/application/domain/model/Money';
+import {
+    MoneyTransferProperties,
+    MoneyTransferPropertiesToken
+} from '../account/application/domain/service/MoneyTransferProperties';
+import {SendMoneyDomainService} from '../account/application/domain/service/SendMoneyDomainService';
+import {SendMoneyUseCaseToken} from '../account/application/port/in/SendMoneyUseCase';
+import {AccountLockToken} from '../account/application/port/out/AccountLock';
+import {LoadAccountPortToken} from '../account/application/port/out/LoadAccountPort';
+import {UpdateAccountStatePortToken} from '../account/application/port/out/UpdateAccountStatePort';
+import {SendMoneyApplicationService} from '../account/application/service/SendMoneyApplicationService';
 import {EventBus} from "../common/event/EventBus";
-import type {MoneyTransferredEvent} from "../common/event/events/MoneyTransferredEvent";
 import {ResendEmailAdapter} from "../notification/adapter/out/email/ResendEmailAdapter";
-import {SendNotificationUseCaseToken} from "../notification/application/port/in/SendNotificationUseCase";
 import {EmailSenderPortToken} from "../notification/application/port/out/EmailSenderPort";
 import {NotificationService} from "../notification/application/service/NotificationService";
-import type { CloudflareBindings } from '../types/bindings';
+import type {CloudflareBindings} from '../types/bindings';
 import type {DatabaseConfig, TypedSupabaseClient} from './types';
-import { EventBusToken, DatabaseConfigToken, SupabaseClientToken } from './types';
+import {DatabaseConfigToken, EventBusToken, SupabaseClientToken} from './types';
 
 // 初期化済みフラグ（複数回初期化を防ぐ）
 let isInitialized = false;
@@ -286,84 +286,22 @@ export function setupContainer(env: CloudflareBindings): void {
         useClass: SendMoneyApplicationService,
     });
 
-    // ========================================
-    // 6. イベントバスの登録（新規追加）
-    // ========================================
-
-    /**
-     * EventBus: シングルトンとして登録
-     *
-     * 【シングルトンにする理由】
-     * - アプリケーション全体で1つのEventBusを共有
-     * - 全てのイベント発行・購読を一元管理
-     * - メモリ効率が良い
-     */
+    // EventBusの登録
     const eventBus = new EventBus()
-
     container.register(EventBusToken, {
         useValue: eventBus,
     })
 
-    console.log('📡 EventBus registered')
-
-    // ========================================
-    // 7. 通知サービスの登録（新規追加）
-    // ========================================
-
-    /**
-     * Resend API キーの確認
-     */
-    if (!env.RESEND_API_KEY) {
-        console.warn('⚠️  RESEND_API_KEY not found. Email notifications will fail.')
-    }
-
-    /**
-     * ResendEmailAdapter: Resend を使ったメール送信
-     *
-     * 【useFactory とは？】
-     * コンテナが resolve する時に、指定した関数を実行してインスタンスを作成する方法。
-     * 環境変数などの動的な値を使ってインスタンスを作成したい場合に使用。
-     */
+    // NotificationServiceの登録
     container.register(EmailSenderPortToken, {
-        useFactory: () => {
-            return new ResendEmailAdapter(env.RESEND_API_KEY)
-        },
+        useFactory: () => new ResendEmailAdapter(env.RESEND_API_KEY),
     })
-
-    /**
-     * NotificationService: 通知サービス
-     */
     container.registerSingleton(NotificationService, NotificationService)
 
-    container.register(SendNotificationUseCaseToken, {
-        useToken: NotificationService,
-    })
-
-    console.log('📧 NotificationService registered')
-
     // ========================================
-    // 8. イベントハンドラーの購読設定（新規追加）
+    // ⚠️ イベント購読設定は削除
     // ========================================
-
-    /**
-     * MoneyTransferredEvent が発行されたら
-     * NotificationService.handleMoneyTransferred を呼ぶ
-     *
-     * 【重要】
-     * この購読設定により、SendMoneyApplicationService が
-     * イベントを発行すると、自動的に NotificationService が呼ばれる。
-     *
-     * SendMoneyApplicationService は NotificationService の存在を知らない。
-     * これが「疎結合」の実現！
-     */
-    const notificationService = container.resolve(NotificationService)
-
-    eventBus.subscribe<MoneyTransferredEvent>(
-        'MoneyTransferred',
-        (event) => notificationService.handleMoneyTransferred(event)
-    )
-
-    console.log('🔔 Event handlers subscribed')
+    // これは app-initializer.ts で行う
 
 
     isInitialized = true;
@@ -382,4 +320,4 @@ export function resetContainer(): void {
     console.log('🔄 DI container reset');
 }
 
-export { container };
+export {container};

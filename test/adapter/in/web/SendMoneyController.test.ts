@@ -85,6 +85,7 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
         SUPABASE_URL: "", // beforeAllで設定
         SUPABASE_PUBLISHABLE_KEY: "", // beforeAllで設定
         USE_SUPABASE: "true", // ← Supabaseを使用
+        RESEND_API_KEY: ""
     };
 
     // ========================================
