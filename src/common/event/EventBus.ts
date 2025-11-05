@@ -38,8 +38,15 @@ export class EventBus {
      *
      * キー: イベントタイプ（例: 'MoneyTransferred'）
      * 値: ハンドラーの配列（複数の購読者をサポート）
+     *
+     * 【型パラメータ DomainEvent について】
+     * EventHandler<DomainEvent> を使うことで：
+     * - any を避けて型安全性を保つ
+     * - 全てのドメインイベントを受け入れる柔軟性を持つ
      */
-    private eventTypeToHandlers = new Map<string, EventHandler<any>[]>()
+    private eventTypeToHandlers = new Map<string, EventHandler<DomainEvent>[]>()
+    //                                                        ^^^^^^^^^^^
+    //                                                        any → DomainEvent に変更
 
     /**
      * イベントを購読する
@@ -58,8 +65,14 @@ export class EventBus {
         eventType: string,
         handler: EventHandler<T>
     ): void {
-        const handlers = this.eventTypeToHandlers.get(eventType) || []
-        handlers.push(handler)
+        // nullish coalescing (??) を使用
+        // undefined または null の場合のみ空配列を返す
+        // || では 0, '', false なども空配列になってしまう
+        const handlers = this.eventTypeToHandlers.get(eventType) ?? []
+        //                                                        ^^
+        //                                                        || → ?? に変更
+
+        handlers.push(handler as EventHandler<DomainEvent>)
         this.eventTypeToHandlers.set(eventType, handlers)
 
         console.log(`📝 Subscribed to event: ${eventType}`)
@@ -81,8 +94,14 @@ export class EventBus {
      * await eventBus.publish(event)
      * ```
      */
-    async publish<T extends DomainEvent>(event: T): Promise<void> {
-        const handlers = this.eventTypeToHandlers.get(event.eventType) || []
+    async publish(event: DomainEvent): Promise<void> {
+        //            ^^^^^^^^^^^^^^^^^^^^^
+        //            ジェネリック型パラメータを削除
+        //            DomainEvent で十分（型パラメータは1回しか使われていないため）
+
+        const handlers = this.eventTypeToHandlers.get(event.eventType) ?? []
+        //                                                              ^^
+        //                                                              || → ?? に変更
 
         if (handlers.length === 0) {
             console.log(`⚠️  No handlers for event: ${event.eventType}`)
@@ -100,7 +119,9 @@ export class EventBus {
         results.forEach((result, index) => {
             if (result.status === 'rejected') {
                 console.error(
-                    `❌ Handler ${index} failed for event ${event.eventType}:`,
+                    `❌ Handler ${String(index)} failed for event ${event.eventType}:`,
+                    //            ^^^^^^^^^^^^
+                    //            index を明示的に文字列に変換
                     result.reason
                 )
             }
