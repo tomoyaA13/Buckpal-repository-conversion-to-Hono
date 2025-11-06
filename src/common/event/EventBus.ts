@@ -4,7 +4,19 @@ import type {DomainEvent} from "./DomainEvent";
 /**
  * イベントハンドラーの型定義
  *
- * イベントを受け取って非同期処理を行う関数
+ * イベントを受け取って非同期処理を行う関数の型。
+ *
+ * @template T - 処理するイベントの型（DomainEvent のサブタイプである必要がある）
+ *
+ * @param event - 処理対象のイベント
+ * @returns Promise<void> - 非同期処理の完了を表す Promise（戻り値なし）
+ *
+ * @example
+ * ```typescript
+ * const handler: EventHandler<MoneyTransferredEvent> = async (event) => {
+ *   await notificationService.sendEmail(event)
+ * }
+ * ```
  */
 export type EventHandler<T extends DomainEvent> = (event: T) => Promise<void>
 
