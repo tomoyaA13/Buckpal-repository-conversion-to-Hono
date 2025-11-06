@@ -15,7 +15,7 @@ import { EmailSenderPort, EmailSenderPortToken } from '../port/out/EmailSenderPo
 export class NotificationService implements SendNotificationUseCase {
     constructor(
         @inject(EmailSenderPortToken)
-        private readonly emailSender: EmailSenderPort
+        private readonly emailSenderPort: EmailSenderPort
     ) {}
 
     /**
@@ -53,7 +53,7 @@ export class NotificationService implements SendNotificationUseCase {
         targetAccountId: string,
         amount: string
     ): Promise<void> {
-        await this.emailSender.sendMoneyTransferNotification(
+        await this.emailSenderPort.sendMoneyTransferNotification(
             recipientEmail,
             sourceAccountId,
             targetAccountId,
