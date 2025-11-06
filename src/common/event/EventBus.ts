@@ -36,9 +36,10 @@ export type EventHandler<T extends DomainEvent> = (event: T) => Promise<void>
  * 【使用例】
  * ```typescript
  * // イベントを購読
- * eventBus.subscribe('MoneyTransferred', async (event) => {
- *   console.log('送金されました:', event.amount)
- * })
+ * eventBus.subscribe<MoneyTransferredEvent>(
+ *         'MoneyTransferred',
+ *         (event) => notificationService.handleMoneyTransferred(event)
+ *     )
  *
  * // イベントを発行
  * await eventBus.publish(new MoneyTransferredEvent(...))
@@ -68,9 +69,10 @@ export class EventBus {
      *
      * @example
      * ```typescript
-     * eventBus.subscribe('MoneyTransferred', async (event) => {
-     *   await notificationService.sendEmail(event)
-     * })
+     * eventBus.subscribe<MoneyTransferredEvent>(
+     *         'MoneyTransferred',
+     *         (event) => notificationService.handleMoneyTransferred(event)
+     *     )
      * ```
      */
     subscribe<T extends DomainEvent>(
