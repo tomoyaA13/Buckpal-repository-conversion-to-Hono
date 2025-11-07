@@ -27,7 +27,14 @@ export function setupNotificationContext(
     // イベント購読設定
     eventBus.subscribe<MoneyTransferredEvent>(
         'MoneyTransferred',
-        (event) => notificationService.handleMoneyTransferred(event)
+        async (event) => {
+            // ジェネリクスの型安全性の恩恵を直接受けられる
+            console.log(`📤 送金イベント検出`)
+            console.log(`  送金元: ${String(event.sourceAccountId.getValue())}`)
+            console.log(`  送金先: ${String(event.targetAccountId.getValue())}`)
+            console.log(`  金額: ${String(event.amount.getAmount())}`)
+            await notificationService.handleMoneyTransferred(event);
+        }
     )
 
     console.log('✅ Notification context setup complete')
