@@ -28,6 +28,8 @@ export function setupNotificationContext(
     eventBus.subscribe<MoneyTransferredEvent>(
         'MoneyTransferred',
         async (event) => {
+            // <MoneyTransferEvent> と設定しているので、event の型が MoneyTransferEvent になる。
+            // 例えば下記の部分で MoneyTransferEvent のプロパティにアクセスすることで、
             // ジェネリクスの型安全性の恩恵を直接受けられる
             console.log(`📤 送金イベント検出`)
             console.log(`  送金元: ${String(event.sourceAccountId.getValue())}`)
