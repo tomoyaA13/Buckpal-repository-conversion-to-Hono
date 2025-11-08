@@ -46,7 +46,6 @@ import { SendMoneyApplicationService } from '../account/application/service/Send
 import { InMemoryEventStoreAdapter } from '../common/event/adapter/InMemoryEventStoreAdapter'
 import { SupabaseEventStoreAdapter } from '../common/event/adapter/SupabaseEventStoreAdapter'
 import { EventBus } from '../common/event/EventBus'
-import type {EventStorePort} from "../common/event/port/EventStorePort";
 import { ResendEmailAdapter } from '../notification/adapter/out/email/ResendEmailAdapter'
 import { EmailSenderPortToken } from '../notification/application/port/out/EmailSenderPort'
 import { NotificationService } from '../notification/application/service/NotificationService'
@@ -347,28 +346,27 @@ export function setupContainer(env: CloudflareBindings): void {
     })
 
     // ========================================
-    // 6. EventBusの登録（イベントストアと統合）（MODIFIED）
+    // 6. EventBusの登録（MODIFIED）
     // ========================================
 
     /**
      * EventBus: イベント駆動アーキテクチャの中心
      *
      * 【変更点】
-     * - EventStorePort を解決して、EventBus のコンストラクタに注入
-     * - これにより、イベント発行時に自動的にイベントストアに保存される
+     * @injectable() デコレータを使用することで、
+     * DIコンテナが自動的にEventStorePortを注入してくれる。
      *
-     * 【なぜ手動でインスタンス化するのか】
-     * - EventBus は @injectable() デコレータを使っていない
-     * - コンストラクタ引数がオプショナルなため、手動で注入する方が明確
+     * 【利点】
+     * - 手動インスタンス化が不要
+     * - container.ts がシンプルになる
+     * - テスト時のモック注入が容易
      */
-    const eventStore = container.resolve<EventStorePort>(EventStorePortToken)
-    const eventBus = new EventBus(eventStore)
-
+    container.registerSingleton(EventBus)
     container.register(EventBusToken, {
-        useValue: eventBus,
+        useToken: EventBus,
     })
 
-    console.log('✅ EventBus registered with EventStore')
+    console.log('✅ EventBus registered with automatic EventStore injection')
 
     // ========================================
     // 7. NotificationServiceの登録

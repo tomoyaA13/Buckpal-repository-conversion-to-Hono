@@ -1,3 +1,5 @@
+import { inject, injectable } from 'tsyringe'
+import { EventStorePortToken } from '../../config/types'
 import type { DomainEvent } from './DomainEvent'
 import type { EventStorePort } from './port/EventStorePort'
 
@@ -27,7 +29,7 @@ export type EventHandler<T extends DomainEvent> = (event: T) => Promise<void>
  * - イベントの発行（publish）
  * - イベントの購読（subscribe）
  * - イベントとハンドラーの紐付け管理
- * - イベントストアへの永続化（NEW）
+ * - イベントストアへの永続化
  *
  * 【メリット】
  * 1. 発行者と購読者が互いを知らない（疎結合）
@@ -37,11 +39,8 @@ export type EventHandler<T extends DomainEvent> = (event: T) => Promise<void>
  *
  * 【使用例】
  * ```typescript
- * // イベントストアありで作成
- * const eventBus = new EventBus(eventStore)
- *
- * // イベントストアなしで作成（下位互換性）
- * const eventBus = new EventBus()
+ * // DIコンテナから取得
+ * const eventBus = container.resolve<EventBus>(EventBusToken)
  *
  * // イベントを購読
  * eventBus.subscribe<MoneyTransferredEvent>(
@@ -53,6 +52,7 @@ export type EventHandler<T extends DomainEvent> = (event: T) => Promise<void>
  * await eventBus.publish(new MoneyTransferredEvent(...))
  * ```
  */
+@injectable()
 export class EventBus {
     /**
      * イベントタイプごとのハンドラーを管理
@@ -80,15 +80,20 @@ export class EventBus {
     /**
      * コンストラクタ
      *
-     * @param eventStore イベントストア（省略可能）
+     * @param eventStore イベントストア（DIコンテナから自動注入）
      *
-     * 【設計の意図】
-     * コンストラクタインジェクションを使用することで：
-     * - DIコンテナから EventStorePort を注入できる
+     * 【DIパターン】
+     * @injectable() デコレータにより、tsyringeがこのクラスを管理
+     * @inject(EventStorePortToken) により、EventStorePortが自動注入される
+     *
+     * 【利点】
+     * - container.ts で手動インスタンス化が不要
      * - テスト時はモックを注入できる
-     * - イベントストアなしでも動作する（下位互換性）
+     * - 依存関係の解決が自動化される
      */
-    constructor(eventStore?: EventStorePort) {
+    constructor(
+        @inject(EventStorePortToken) eventStore?: EventStorePort
+    ) {
         this.eventStore = eventStore
 
         if (eventStore) {
