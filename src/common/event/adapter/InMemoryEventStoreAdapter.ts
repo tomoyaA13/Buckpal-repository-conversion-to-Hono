@@ -31,39 +31,44 @@ export class InMemoryEventStoreAdapter implements EventStorePort {
 
     /**
      * イベントを保存
+     *
+     * 【実装】
+     * InMemory実装では非同期処理が不要なため、asyncを使用せず
+     * Promise.resolve()で即座に解決されるPromiseを返す。
      */
-    async save(event: DomainEvent): Promise<void> {
+    save(event: DomainEvent): Promise<void> {
         // イベントIDの重複チェック
         if (this.events.has(event.eventId)) {
             console.warn(`⚠️  Event already exists: ${event.eventId}`)
             // 冪等性を保つため、エラーにはしない
-            return
+            return Promise.resolve()
         }
 
         // Mapに保存
         this.events.set(event.eventId, event)
 
         console.log(`💾 [InMemory] Event saved: ${event.eventType} (ID: ${event.eventId})`)
+        return Promise.resolve()
     }
 
     /**
      * イベントIDでイベントを取得
      */
-    async findById(eventId: string): Promise<DomainEvent | null> {
+    findById(eventId: string): Promise<DomainEvent | null> {
         const event = this.events.get(eventId)
 
         if (!event) {
             console.log(`ℹ️  [InMemory] Event not found: ${eventId}`)
-            return null
+            return Promise.resolve(null)
         }
 
-        return event
+        return Promise.resolve(event)
     }
 
     /**
      * イベントタイプでイベントを検索
      */
-    async findByType(eventType: string, limit = 100): Promise<DomainEvent[]> {
+    findByType(eventType: string, limit = 100): Promise<DomainEvent[]> {
         // 全イベントからフィルタリング
         const filtered = Array.from(this.events.values()).filter(
             (event) => event.eventType === eventType
@@ -75,13 +80,13 @@ export class InMemoryEventStoreAdapter implements EventStorePort {
         )
 
         // limit件まで取得
-        return sorted.slice(0, limit)
+        return Promise.resolve(sorted.slice(0, limit))
     }
 
     /**
      * 期間を指定してイベントを検索
      */
-    async findByDateRange(
+    findByDateRange(
         startDate: Date,
         endDate: Date,
         eventType?: string,
@@ -107,7 +112,7 @@ export class InMemoryEventStoreAdapter implements EventStorePort {
         )
 
         // limit件まで取得
-        return sorted.slice(0, limit)
+        return Promise.resolve(sorted.slice(0, limit))
     }
 
     /**
