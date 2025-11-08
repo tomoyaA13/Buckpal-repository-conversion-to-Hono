@@ -1,5 +1,5 @@
-import type {DomainEvent} from "./DomainEvent";
-
+import type { DomainEvent } from './DomainEvent'
+import type { EventStorePort } from './port/EventStorePort'
 
 /**
  * イベントハンドラーの型定義
@@ -27,14 +27,22 @@ export type EventHandler<T extends DomainEvent> = (event: T) => Promise<void>
  * - イベントの発行（publish）
  * - イベントの購読（subscribe）
  * - イベントとハンドラーの紐付け管理
+ * - イベントストアへの永続化（NEW）
  *
  * 【メリット】
  * 1. 発行者と購読者が互いを知らない（疎結合）
  * 2. 複数の購読者を簡単に追加できる（拡張性）
  * 3. イベント駆動アーキテクチャの実現
+ * 4. イベントの永続化による監査・デバッグ能力
  *
  * 【使用例】
  * ```typescript
+ * // イベントストアありで作成
+ * const eventBus = new EventBus(eventStore)
+ *
+ * // イベントストアなしで作成（下位互換性）
+ * const eventBus = new EventBus()
+ *
  * // イベントを購読
  * eventBus.subscribe<MoneyTransferredEvent>(
  *         'MoneyTransferred',
@@ -58,8 +66,37 @@ export class EventBus {
      * - 全てのドメインイベントを受け入れる柔軟性を持つ
      */
     private eventTypeToHandlers = new Map<string, EventHandler<DomainEvent>[]>()
-    //                                                        ^^^^^^^^^^^
-    //                                                        any → DomainEvent に変更
+
+    /**
+     * イベントストア（オプショナル）
+     *
+     * 【なぜオプショナルか】
+     * - 下位互換性を保つため
+     * - テスト環境でイベントストアなしでも動作させるため
+     * - イベントストアの初期化が失敗してもEventBusは動作すべきため
+     */
+    private readonly eventStore?: EventStorePort
+
+    /**
+     * コンストラクタ
+     *
+     * @param eventStore イベントストア（省略可能）
+     *
+     * 【設計の意図】
+     * コンストラクタインジェクションを使用することで：
+     * - DIコンテナから EventStorePort を注入できる
+     * - テスト時はモックを注入できる
+     * - イベントストアなしでも動作する（下位互換性）
+     */
+    constructor(eventStore?: EventStorePort) {
+        this.eventStore = eventStore
+
+        if (eventStore) {
+            console.log('✅ EventBus initialized with EventStore')
+        } else {
+            console.log('⚠️  EventBus initialized without EventStore (events will not be persisted)')
+        }
+    }
 
     /**
      * イベントを購読する
@@ -83,8 +120,6 @@ export class EventBus {
         // undefined または null の場合のみ空配列を返す
         // || では 0, '', false なども空配列になってしまう
         const handlers = this.eventTypeToHandlers.get(eventType) ?? []
-        //                                                        ^^
-        //                                                        || → ?? に変更
 
         handlers.push(handler as EventHandler<DomainEvent>)
         this.eventTypeToHandlers.set(eventType, handlers)
@@ -97,10 +132,17 @@ export class EventBus {
      *
      * @param event 発行するイベント
      *
-     * 【動作】
-     * 1. イベントタイプに対応するハンドラーを全て取得
-     * 2. 全てのハンドラーを並列実行
-     * 3. 1つでも失敗したらエラーをログに記録（ただし処理は継続）
+     * 【動作フロー】
+     * 1. イベントストアに保存（失敗してもハンドラー実行は継続）
+     * 2. イベントタイプに対応するハンドラーを全て取得
+     * 3. 全てのハンドラーを並列実行
+     * 4. 1つでも失敗したらエラーをログに記録（ただし処理は継続）
+     *
+     * 【イベントストアへの保存タイミング】
+     * ハンドラー実行「前」に保存する理由：
+     * - ハンドラーが失敗してもイベントは記録される（監査ログとして重要）
+     * - イベントソーシングの観点では、イベントの発生自体が重要
+     * - ハンドラーの実行結果はイベントの発生とは独立
      *
      * @example
      * ```typescript
@@ -109,33 +151,42 @@ export class EventBus {
      * ```
      */
     async publish(event: DomainEvent): Promise<void> {
-        //            ^^^^^^^^^^^^^^^^^^^^^
-        //            ジェネリック型パラメータを削除
-        //            DomainEvent で十分（型パラメータは1回しか使われていないため）
+        console.log(`📤 Publishing event: ${event.eventType} (ID: ${event.eventId})`)
 
+        // ① イベントストアに保存（あれば）
+        if (this.eventStore) {
+            try {
+                await this.eventStore.save(event)
+                console.log(`💾 Event persisted to store: ${event.eventId}`)
+            } catch (error) {
+                // イベントストアへの保存失敗はログに記録するが、
+                // ハンドラーの実行は継続する（イベントストアの障害が
+                // ビジネスロジックを止めないようにするため）
+                console.error(
+                    `❌ Failed to persist event to store (continuing with handlers): ${event.eventId}`,
+                    error
+                )
+            }
+        }
+
+        // ② ハンドラーの取得
         const handlers = this.eventTypeToHandlers.get(event.eventType) ?? []
-        //                                                              ^^
-        //                                                              || → ?? に変更
 
         if (handlers.length === 0) {
             console.log(`⚠️  No handlers for event: ${event.eventType}`)
             return
         }
 
-        console.log(`📤 Publishing event: ${event.eventType} (ID: ${event.eventId})`)
-
-        // 全てのハンドラーを並列実行
+        // ③ 全てのハンドラーを並列実行
         const results = await Promise.allSettled(
-            handlers.map(handler => handler(event))
+            handlers.map((handler) => handler(event))
         )
 
-        // エラーをログに記録（ただし処理は継続）
+        // ④ エラーをログに記録（ただし処理は継続）
         results.forEach((result, index) => {
             if (result.status === 'rejected') {
                 console.error(
                     `❌ Handler ${String(index)} failed for event ${event.eventType}:`,
-                    //            ^^^^^^^^^^^^
-                    //            index を明示的に文字列に変換
                     result.reason
                 )
             }
