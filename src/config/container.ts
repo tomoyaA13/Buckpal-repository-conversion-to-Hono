@@ -373,13 +373,37 @@ export function setupContainer(env: CloudflareBindings): void {
     // ========================================
 
     /**
-     * NotificationService: メール通知を送るサービス
+     * EmailSenderPort: メール送信機能のインターフェース
      *
-     * EmailSenderPort を通じて Resend API を使用。
+     * 【useFactory を使う理由】
+     * ResendEmailAdapter のコンストラクタは API キーを必要とする。
+     * useClass では引数を渡せないため、useFactory で動的に生成する。
+     *
+     * 【ファクトリ関数とは？】
+     * () => new ResendEmailAdapter(env.RESEND_API_KEY)
+     * ↑この関数が「ファクトリ（工場）」
+     *
+     * resolve が呼ばれるたびに、この関数が実行されて
+     * 新しい ResendEmailAdapter インスタンスが作られる。
+     *
+     * useClass では引数を渡せないため、この方法を採用。
+     *
+     * 【処理の流れ】
+     * 1. container.resolve(EmailSenderPortToken) が呼ばれる
+     * 2. DIコンテナがファクトリ関数を実行
+     * 3. new ResendEmailAdapter(env.RESEND_API_KEY) が実行される
+     * 4. 作成されたインスタンスが返される
      */
     container.register(EmailSenderPortToken, {
         useFactory: () => new ResendEmailAdapter(env.RESEND_API_KEY),
     })
+
+    /**
+     * NotificationService: メール通知を送るサービス
+     *
+     * コンストラクタで EmailSenderPort を @inject しているため、
+     * 上で登録した ResendEmailAdapter が自動的に注入される。
+     */
     container.registerSingleton(NotificationService, NotificationService)
 
     // ========================================
