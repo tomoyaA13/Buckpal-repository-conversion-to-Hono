@@ -918,6 +918,14 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             expect(mockEventStore.save).toHaveBeenCalledTimes(1);
 
             // 2. 実際に保存されたイベントを取り出す（型アサーションを追加）
+            //
+            // mock.calls の構造:
+            // [
+            //   [引数1, 引数2, ...],  ← calls[0] = 1回目の呼び出し
+            //   [引数1, 引数2, ...],  ← calls[1] = 2回目の呼び出し
+            // ]
+            //
+            // calls[0][0] = 1回目の呼び出しの1番目の引数
             const savedEvent = vi.mocked(mockEventStore.save).mock.calls[0][0] as MoneyTransferredEvent;
 
             // 3. イベントのプロパティを個別に検証
