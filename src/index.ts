@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import {Hono} from 'hono';
 import {container} from "tsyringe";
-import {sendMoneyRouter} from "./adapter/in/web/SendMoneyController";
-import {setupContainer} from './config/container';
+import {sendMoneyRouter} from "./account/adapter/in/web/SendMoneyController";
+import {initializeApplication} from "./config/app-initializer";
 import type {DatabaseConfig} from "./config/types";
 import {DatabaseConfigToken} from "./config/types";
 import type {CloudflareBindings} from './types/bindings';
@@ -22,11 +22,9 @@ app.get('/', (c) => {
     });
 });
 
-// 起動時に一度だけDIコンテナを初期化
-// Cloudflare Workers では最初のリクエスト時に実行される
+// 初期化処理を app-initializer に委譲
 app.use('*', async (c, next) => {
-    // 環境変数を使ってコンテナを初期化（初回のみ）
-    setupContainer(c.env);
+    initializeApplication(c.env);
     await next();
 });
 

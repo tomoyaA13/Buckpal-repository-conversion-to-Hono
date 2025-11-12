@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import {AccountId, Activity} from "../../src/application/domain/model/Activity";
-import {Money} from "../../src/application/domain/model/Money";
-import {ActivityWindow} from "../../src/application/domain/model/ActivityWindow";
-import {Account} from "../../src/application/domain/model/Account";
-import {InsufficientBalanceException} from "../../src/application/domain/exception/InsufficientBalanceException";
+import {AccountId, Activity} from "../../src/account/application/domain/model/Activity";
+import {Money} from "../../src/account/application/domain/model/Money";
+import {ActivityWindow} from "../../src/account/application/domain/model/ActivityWindow";
+import {Account} from "../../src/account/application/domain/model/Account";
+import {InsufficientBalanceException} from "../../src/account/application/domain/exception/InsufficientBalanceException";
 
 
 describe("Account", () => {

@@ -1,9 +1,9 @@
 import {inject, injectable} from 'tsyringe';
+import {SupabaseClientToken, TypedSupabaseClient} from '../../../../config/types';
 import {Account} from '../../../application/domain/model/Account';
 import {AccountId} from '../../../application/domain/model/Activity';
 import {LoadAccountPort} from '../../../application/port/out/LoadAccountPort';
 import {UpdateAccountStatePort} from '../../../application/port/out/UpdateAccountStatePort';
-import {SupabaseClientToken, TypedSupabaseClient} from '../../../config/types';
 import {AccountAggregateRecord} from './entities/AccountRecord';
 import {toDomain, toActivityRecords, calculateBaselineBalance} from './mappers/AccountMapper';
 

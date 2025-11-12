@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import {AccountId, Activity} from "../../src/application/domain/model/Activity";
-import {ActivityWindow} from "../../src/application/domain/model/ActivityWindow";
-import {Money} from "../../src/application/domain/model/Money";
+import {AccountId, Activity} from "../../src/account/application/domain/model/Activity";
+import {ActivityWindow} from "../../src/account/application/domain/model/ActivityWindow";
+import {Money} from "../../src/account/application/domain/model/Money";
 
 
 describe("ActivityWindow", () => {

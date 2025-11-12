@@ -1,21 +1,33 @@
 import "reflect-metadata"
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { container } from "tsyringe";
-import { SendMoneyApplicationService } from "../../../src/application/service/SendMoneyApplicationService";
-import { SendMoneyCommand } from "../../../src/application/port/in/SendMoneyCommand";
-import { SendMoneyUseCaseToken } from "../../../src/application/port/in/SendMoneyUseCase";
-import { LoadAccountPort, LoadAccountPortToken } from "../../../src/application/port/out/LoadAccountPort";
-import { UpdateAccountStatePort, UpdateAccountStatePortToken } from "../../../src/application/port/out/UpdateAccountStatePort";
-import { AccountLock, AccountLockToken } from "../../../src/application/port/out/AccountLock";
-import { MoneyTransferProperties, MoneyTransferPropertiesToken } from "../../../src/application/domain/service/MoneyTransferProperties";
-import { SendMoneyDomainService } from "../../../src/application/domain/service/SendMoneyDomainService";
-import { ThresholdExceededException } from "../../../src/application/domain/exception/ThresholdExceededException";
-import { Account } from "../../../src/application/domain/model/Account";
-import { AccountId } from "../../../src/application/domain/model/Activity";
-import { ActivityWindow } from "../../../src/application/domain/model/ActivityWindow";
-import { Money } from "../../../src/application/domain/model/Money";
-import {InsufficientBalanceException} from "../../../src/application/domain/exception/InsufficientBalanceException";
+import {beforeEach, describe, expect, it, vi} from "vitest";
+import {container} from "tsyringe";
+import {SendMoneyApplicationService} from "../../../src/account/application/service/SendMoneyApplicationService";
+import {SendMoneyCommand} from "../../../src/account/application/port/in/SendMoneyCommand";
+import {SendMoneyUseCaseToken} from "../../../src/account/application/port/in/SendMoneyUseCase";
+import {LoadAccountPort, LoadAccountPortToken} from "../../../src/account/application/port/out/LoadAccountPort";
+import {
+    UpdateAccountStatePort,
+    UpdateAccountStatePortToken
+} from "../../../src/account/application/port/out/UpdateAccountStatePort";
+import {AccountLock, AccountLockToken} from "../../../src/account/application/port/out/AccountLock";
+import {
+    MoneyTransferProperties,
+    MoneyTransferPropertiesToken
+} from "../../../src/account/application/domain/service/MoneyTransferProperties";
+import {SendMoneyDomainService} from "../../../src/account/application/domain/service/SendMoneyDomainService";
+import {ThresholdExceededException} from "../../../src/account/application/domain/exception/ThresholdExceededException";
+import {Account} from "../../../src/account/application/domain/model/Account";
+import {AccountId} from "../../../src/account/application/domain/model/Activity";
+import {ActivityWindow} from "../../../src/account/application/domain/model/ActivityWindow";
+import {Money} from "../../../src/account/application/domain/model/Money";
+import {
+    InsufficientBalanceException
+} from "../../../src/account/application/domain/exception/InsufficientBalanceException";
+import {EventBusToken, EventStorePortToken} from "../../../src/config/types";
+import {EventBus} from "../../../src/common/event/EventBus";
+import {EventStorePort} from "../../../src/common/event/port/EventStorePort";
+import {MoneyTransferredEvent} from "../../../src/common/event/events/MoneyTransferredEvent";
 
 /**
  * SendMoneyApplicationService の統合テスト
@@ -51,6 +63,8 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
     // ===== テスト対象のサービス =====
     // 実際にテストする SendMoneyApplicationService のインスタンス
     let sendMoneyService: SendMoneyApplicationService;
+
+    let mockEventStore: EventStorePort;
 
     // ===== 共通のテストデータ =====
     // 複数のテストで使い回すアカウントID
@@ -103,6 +117,14 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             Money.of(1000000)
         );
 
+        // ✅ 追加: EventStorePort のモック
+        mockEventStore = {
+            save: vi.fn().mockResolvedValue(undefined),
+            findById: vi.fn().mockResolvedValue(null),
+            findByType: vi.fn().mockResolvedValue([]),
+            findByDateRange: vi.fn().mockResolvedValue([]),
+        };
+
         // ===== DIコンテナにモックとサービスを登録 =====
         // tsyringeのDIコンテナに、各トークン（シンボル）とモックを関連付ける
 
@@ -125,6 +147,15 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
         container.register(MoneyTransferPropertiesToken, {
             useValue: mockMoneyTransferProperties,
         });
+
+
+        // ✅ 追加: EventStorePort を登録（オプショナルなのでモックでOK）
+        container.register(EventStorePortToken, {useValue: mockEventStore});
+
+        // ✅ 追加: EventBus を実物として登録
+        container.registerSingleton(EventBus);
+        container.register(EventBusToken, {useToken: EventBus});
+
 
         // SendMoneyDomainService は実物を使う（統合テストのポイント）
         // 【重要】ドメインサービスはモック化せず、実際のビジネスロジックを実行
@@ -842,12 +873,146 @@ describe("SendMoneyApplicationService（統合テスト）", () => {
             );
 
             // ===== Act =====
-            const isSuccess = await sendMoneyService.sendMoney(command);
+            await sendMoneyService.sendMoney(command);
 
             // ===== Assert =====
             // 残高の確認
             expect(sourceAccount.calculateBalance().getAmount()).toBe(999n); // 1000 - 1
             expect(targetAccount.calculateBalance().getAmount()).toBe(1n);   // 0 + 1
+        });
+    });
+
+    describe("📤 イベント発行の検証", () => {
+        it("送金成功時にMoneyTransferredEventが発行される", async () => {
+            // ===== Arrange =====
+            const transferAmount = Money.of(500);
+
+            const sourceAccount = Account.withId(
+                sourceAccountId,
+                Money.of(1000),
+                new ActivityWindow()
+            );
+
+            const targetAccount = Account.withId(
+                targetAccountId,
+                Money.of(500),
+                new ActivityWindow()
+            );
+
+            vi.mocked(mockLoadAccountPort.loadAccount)
+                .mockResolvedValueOnce(sourceAccount)
+                .mockResolvedValueOnce(targetAccount);
+
+            const command = new SendMoneyCommand(
+                sourceAccountId,
+                targetAccountId,
+                transferAmount
+            );
+
+            // ===== Act =====
+            await sendMoneyService.sendMoney(command);
+
+            // ===== Assert =====
+
+            // 1. EventStoreのsaveが呼ばれたか
+            expect(mockEventStore.save).toHaveBeenCalledTimes(1);
+
+            // 2. 実際に保存されたイベントを取り出す（型アサーションを追加）
+            //
+            // mock.calls の構造:
+            // [
+            //   [引数1, 引数2, ...],  ← calls[0] = 1回目の呼び出し
+            //   [引数1, 引数2, ...],  ← calls[1] = 2回目の呼び出し
+            // ]
+            //
+            // calls[0][0] = 1回目の呼び出しの1番目の引数
+            const savedEvent = vi.mocked(mockEventStore.save).mock.calls[0][0] as MoneyTransferredEvent;
+
+            // 3. イベントのプロパティを個別に検証
+            expect(savedEvent).toBeInstanceOf(MoneyTransferredEvent);
+            expect(savedEvent.eventType).toBe("MoneyTransferred");
+
+            // 4. AccountId の検証（値オブジェクトなので、getValue() で値を取得）
+            expect(savedEvent.sourceAccountId.getValue()).toBe(1n);
+            expect(savedEvent.targetAccountId.getValue()).toBe(2n);
+
+            // 5. Money の検証
+            expect(savedEvent.amount.getAmount()).toBe(500n);
+
+            // 6. イベントIDが生成されているか（UUIDの形式チェック）
+            expect(savedEvent.eventId).toMatch(
+                /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+            );
+
+            // 7. タイムスタンプが設定されているか
+            expect(savedEvent.occurredOn).toBeInstanceOf(Date);
+        });
+    });
+
+    describe("🛡️ EventBusの堅牢性", () => {
+        /**
+         * テストケース: EventStore保存失敗でも送金は成功する
+         *
+         * 【目的】
+         * - イベントストアの障害が送金処理を止めないことを確認
+         * - システムの可用性を保証
+         *
+         * 【ビジネス要件】
+         * - 送金処理は最優先（イベントログは副次的）
+         * - イベントストア障害時も送金を継続すべき
+         * - ただしエラーはログに記録される
+         */
+        it("EventStore保存失敗でも送金は成功する", async () => {
+            // ===== Arrange =====
+            const transferAmount = Money.of(500);
+
+            const sourceAccount = Account.withId(
+                sourceAccountId,
+                Money.of(1000),
+                new ActivityWindow()
+            );
+
+            const targetAccount = Account.withId(
+                targetAccountId,
+                Money.of(500),
+                new ActivityWindow()
+            );
+
+            vi.mocked(mockLoadAccountPort.loadAccount)
+                .mockResolvedValueOnce(sourceAccount)
+                .mockResolvedValueOnce(targetAccount);
+
+            // EventStoreの保存を失敗させる
+            vi.mocked(mockEventStore.save).mockRejectedValueOnce(
+                new Error("EventStore connection failed")
+            );
+
+            const command = new SendMoneyCommand(
+                sourceAccountId,
+                targetAccountId,
+                transferAmount
+            );
+
+            // ===== Act =====
+            // エラーをスローせずに完了することを確認
+            await expect(
+                sendMoneyService.sendMoney(command)
+            ).resolves.not.toThrow();
+
+            // ===== Assert =====
+
+            // 1. EventStore保存は試行された
+            expect(mockEventStore.save).toHaveBeenCalledTimes(1);
+
+            // 2. 送金処理自体は成功している
+            expect(mockUpdateAccountStatePort.updateActivities).toHaveBeenCalledTimes(2);
+
+            // 3. 残高が正しく更新されている
+            expect(sourceAccount.calculateBalance().getAmount()).toBe(500n);
+            expect(targetAccount.calculateBalance().getAmount()).toBe(1000n);
+
+            // 4. ロックは正しく解放されている
+            expect(mockAccountLock.releaseAccount).toHaveBeenCalledTimes(2);
         });
     });
 

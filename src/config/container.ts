@@ -25,28 +25,41 @@
  * - inject: クラスのコンストラクタで、どの依存が必要かを宣言
  */
 
-import 'reflect-metadata'; // tsyringe が必要とするメタデータ機能を有効化
-
-import { createClient } from '@supabase/supabase-js';
-import { container } from 'tsyringe';
-import type {Database} from "../../supabase/database";
-import { InMemoryAccountPersistenceAdapter } from '../adapter/out/persistence/InMemoryAccountPersistenceAdapter';
-import { NoOpAccountLock } from '../adapter/out/persistence/NoOpAccountLock';
-import { SupabaseAccountPersistenceAdapter } from '../adapter/out/persistence/SupabaseAccountPersistenceAdapter';
-import { Money } from '../application/domain/model/Money';
-import { MoneyTransferProperties, MoneyTransferPropertiesToken } from '../application/domain/service/MoneyTransferProperties';
-import { SendMoneyDomainService } from '../application/domain/service/SendMoneyDomainService';
-import { SendMoneyUseCaseToken } from '../application/port/in/SendMoneyUseCase';
-import { AccountLockToken } from '../application/port/out/AccountLock';
-import { LoadAccountPortToken } from '../application/port/out/LoadAccountPort';
-import { UpdateAccountStatePortToken } from '../application/port/out/UpdateAccountStatePort';
-import { SendMoneyApplicationService } from '../application/service/SendMoneyApplicationService';
-import type { CloudflareBindings } from '../types/bindings';
-import type { DatabaseConfig, TypedSupabaseClient } from './types';
-import { DatabaseConfigToken, SupabaseClientToken } from './types';
+import 'reflect-metadata' // tsyringe が必要とするメタデータ機能を有効化
+import { createClient } from '@supabase/supabase-js'
+import { container } from 'tsyringe'
+import type { Database } from '../../supabase/database'
+import { InMemoryAccountPersistenceAdapter } from '../account/adapter/out/persistence/InMemoryAccountPersistenceAdapter'
+import { NoOpAccountLock } from '../account/adapter/out/persistence/NoOpAccountLock'
+import { SupabaseAccountPersistenceAdapter } from '../account/adapter/out/persistence/SupabaseAccountPersistenceAdapter'
+import { Money } from '../account/application/domain/model/Money'
+import {
+    MoneyTransferProperties,
+    MoneyTransferPropertiesToken,
+} from '../account/application/domain/service/MoneyTransferProperties'
+import { SendMoneyDomainService } from '../account/application/domain/service/SendMoneyDomainService'
+import { SendMoneyUseCaseToken } from '../account/application/port/in/SendMoneyUseCase'
+import { AccountLockToken } from '../account/application/port/out/AccountLock'
+import { LoadAccountPortToken } from '../account/application/port/out/LoadAccountPort'
+import { UpdateAccountStatePortToken } from '../account/application/port/out/UpdateAccountStatePort'
+import { SendMoneyApplicationService } from '../account/application/service/SendMoneyApplicationService'
+import { InMemoryEventStoreAdapter } from '../common/event/adapter/InMemoryEventStoreAdapter'
+import { SupabaseEventStoreAdapter } from '../common/event/adapter/SupabaseEventStoreAdapter'
+import { EventBus } from '../common/event/EventBus'
+import { ResendEmailAdapter } from '../notification/adapter/out/email/ResendEmailAdapter'
+import { EmailSenderPortToken } from '../notification/application/port/out/EmailSenderPort'
+import { NotificationService } from '../notification/application/service/NotificationService'
+import type { CloudflareBindings } from '../types/bindings'
+import type { DatabaseConfig, TypedSupabaseClient } from './types'
+import {
+    DatabaseConfigToken,
+    EventBusToken,
+    EventStorePortToken,
+    SupabaseClientToken,
+} from './types'
 
 // 初期化済みフラグ（複数回初期化を防ぐ）
-let isInitialized = false;
+let isInitialized = false
 
 /**
  * DIコンテナの初期化と依存関係の登録
@@ -56,19 +69,21 @@ let isInitialized = false;
  * 【処理の流れ】
  * 1. 設定オブジェクト（MoneyTransferProperties）の登録
  * 2. 永続化アダプター（InMemory または Supabase）の登録
- * 3. アカウントロックの登録
- * 4. ドメインサービスの登録
- * 5. アプリケーションサービス（UseCase実装）の登録
+ * 3. イベントストアアダプターの登録（NEW）
+ * 4. アカウントロックの登録
+ * 5. ドメインサービスの登録
+ * 6. アプリケーションサービス（UseCase実装）の登録
+ * 7. EventBusの登録（イベントストアと統合）
  *
  * @param env Cloudflare Workers の環境変数（SUPABASE_URL など）
  */
 export function setupContainer(env: CloudflareBindings): void {
     // 既に初期化済みなら何もしない（冪等性の確保）
     if (isInitialized) {
-        return;
+        return
     }
 
-    console.log('🚀 Initializing DI container...');
+    console.log('🚀 Initializing DI container...')
 
     // ========================================
     // 1. 設定オブジェクトの登録
@@ -82,12 +97,12 @@ export function setupContainer(env: CloudflareBindings): void {
      * container.resolve(MoneyTransferPropertiesToken) を呼ぶと、
      * この properties インスタンスが返される。
      */
-    const transferThreshold = Money.of(1_000_000); // 送金上限: 100万円
-    const properties = new MoneyTransferProperties(transferThreshold);
+    const transferThreshold = Money.of(1_000_000) // 送金上限: 100万円
+    const properties = new MoneyTransferProperties(transferThreshold)
 
     container.register(MoneyTransferPropertiesToken, {
         useValue: properties, // この具体的なインスタンスを使う
-    });
+    })
 
     // ========================================
     // 2. 出力アダプター（永続化層）の登録
@@ -104,10 +119,10 @@ export function setupContainer(env: CloudflareBindings): void {
      *
      * Application層のコードは一切変更不要！これが「依存性の逆転」の威力。
      */
-    const useSupabase = env.USE_SUPABASE === 'true';
+    const useSupabase = env.USE_SUPABASE === 'true'
 
     if (useSupabase) {
-        console.log('📦 Using Supabase adapter');
+        console.log('📦 Using Supabase adapter')
 
         // ----------------------------------------
         // Supabase アダプターの登録
@@ -120,11 +135,11 @@ export function setupContainer(env: CloudflareBindings): void {
         const dbConfig: DatabaseConfig = {
             url: env.SUPABASE_URL,
             key: env.SUPABASE_PUBLISHABLE_KEY,
-        };
+        }
 
         container.register(DatabaseConfigToken, {
             useValue: dbConfig,
-        });
+        })
 
         /**
          * TypedSupabaseClient: Supabaseクライアントの作成
@@ -134,21 +149,25 @@ export function setupContainer(env: CloudflareBindings): void {
          * アプリケーション全体で1つのインスタンスを共有すべき。
          * 毎回新規作成すると、パフォーマンスが悪化する。
          */
-        const supabaseClient = createClient<Database>(dbConfig.url, dbConfig.key, {
-            auth: {
-                persistSession: false, // Cloudflare Workers ではセッション永続化不要
-            },
-            // グローバル設定（全てのリクエストに適用されるヘッダーなど）
-            global: {
-                headers: {
-                    'x-application-name': 'buckpal',
+        const supabaseClient = createClient<Database>(
+            dbConfig.url,
+            dbConfig.key,
+            {
+                auth: {
+                    persistSession: false, // Cloudflare Workers ではセッション永続化不要
                 },
-            },
-        });
+                // グローバル設定（全てのリクエストに適用されるヘッダーなど）
+                global: {
+                    headers: {
+                        'x-application-name': 'buckpal',
+                    },
+                },
+            }
+        )
 
         container.register<TypedSupabaseClient>(SupabaseClientToken, {
             useValue: supabaseClient, // 作成済みインスタンスを登録
-        });
+        })
 
         /**
          * SupabaseAccountPersistenceAdapter の登録
@@ -163,7 +182,7 @@ export function setupContainer(env: CloudflareBindings): void {
         container.registerSingleton(
             SupabaseAccountPersistenceAdapter,
             SupabaseAccountPersistenceAdapter
-        );
+        )
 
         /**
          * Port（インターフェース）と Adapter（実装）の紐付け
@@ -192,13 +211,40 @@ export function setupContainer(env: CloudflareBindings): void {
          */
         container.register(LoadAccountPortToken, {
             useToken: SupabaseAccountPersistenceAdapter,
-        });
+        })
 
         container.register(UpdateAccountStatePortToken, {
             useToken: SupabaseAccountPersistenceAdapter,
-        });
+        })
+
+        // ----------------------------------------
+        // Supabase EventStoreAdapter の登録（NEW）
+        // ----------------------------------------
+
+        /**
+         * SupabaseEventStoreAdapter: イベントをSupabaseに永続化
+         *
+         * 【なぜシングルトンか】
+         * - イベントストアは状態を持たない（ステートレス）
+         * - Supabaseクライアントを共有するため
+         * - アプリケーション全体で1つのインスタンスで十分
+         */
+        container.registerSingleton(
+            SupabaseEventStoreAdapter,
+            SupabaseEventStoreAdapter
+        )
+
+        /**
+         * EventStorePort と SupabaseEventStoreAdapter の紐付け
+         *
+         * EventBus は EventStorePort（インターフェース）に依存。
+         * 実際に注入されるのは SupabaseEventStoreAdapter。
+         */
+        container.register(EventStorePortToken, {
+            useToken: SupabaseEventStoreAdapter,
+        })
     } else {
-        console.log('💾 Using InMemory adapter');
+        console.log('💾 Using InMemory adapter')
 
         // ----------------------------------------
         // InMemory アダプターの登録
@@ -214,15 +260,34 @@ export function setupContainer(env: CloudflareBindings): void {
         container.registerSingleton(
             InMemoryAccountPersistenceAdapter,
             InMemoryAccountPersistenceAdapter
-        );
+        )
 
         container.register(LoadAccountPortToken, {
             useToken: InMemoryAccountPersistenceAdapter,
-        });
+        })
 
         container.register(UpdateAccountStatePortToken, {
             useToken: InMemoryAccountPersistenceAdapter,
-        });
+        })
+
+        // ----------------------------------------
+        // InMemory EventStoreAdapter の登録（NEW）
+        // ----------------------------------------
+
+        /**
+         * InMemoryEventStoreAdapter: テスト用のイベントストア
+         *
+         * メモリ上にイベントを保存するため、
+         * データベースなしでテストが可能。
+         */
+        container.registerSingleton(
+            InMemoryEventStoreAdapter,
+            InMemoryEventStoreAdapter
+        )
+
+        container.register(EventStorePortToken, {
+            useToken: InMemoryEventStoreAdapter,
+        })
     }
 
     // ========================================
@@ -241,7 +306,7 @@ export function setupContainer(env: CloudflareBindings): void {
      */
     container.register(AccountLockToken, {
         useClass: NoOpAccountLock,
-    });
+    })
 
     // ========================================
     // 4. ドメインサービスの登録
@@ -253,7 +318,7 @@ export function setupContainer(env: CloudflareBindings): void {
      * シングルトンとして登録。ドメインサービスは通常ステートレスなので、
      * 1つのインスタンスを共有して問題ない。
      */
-    container.registerSingleton(SendMoneyDomainService, SendMoneyDomainService);
+    container.registerSingleton(SendMoneyDomainService, SendMoneyDomainService)
 
     // ========================================
     // 5. アプリケーションサービスの登録
@@ -278,10 +343,78 @@ export function setupContainer(env: CloudflareBindings): void {
      */
     container.register(SendMoneyUseCaseToken, {
         useClass: SendMoneyApplicationService,
-    });
+    })
 
-    isInitialized = true;
-    console.log(`✅ DI container initialized (Supabase: ${useSupabase ? 'enabled' : 'disabled'})`);
+    // ========================================
+    // 6. EventBusの登録（MODIFIED）
+    // ========================================
+
+    /**
+     * EventBus: イベント駆動アーキテクチャの中心
+     *
+     * 【変更点】
+     * @injectable() デコレータを使用することで、
+     * DIコンテナが自動的にEventStorePortを注入してくれる。
+     *
+     * 【利点】
+     * - 手動インスタンス化が不要
+     * - container.ts がシンプルになる
+     * - テスト時のモック注入が容易
+     */
+    container.registerSingleton(EventBus)
+    container.register(EventBusToken, {
+        useToken: EventBus,
+    })
+
+    console.log('✅ EventBus registered with automatic EventStore injection')
+
+    // ========================================
+    // 7. NotificationServiceの登録
+    // ========================================
+
+    /**
+     * EmailSenderPort: メール送信機能のインターフェース
+     *
+     * 【useFactory を使う理由】
+     * ResendEmailAdapter のコンストラクタは API キーを必要とする。
+     * useClass では引数を渡せないため、useFactory で動的に生成する。
+     *
+     * 【ファクトリ関数とは？】
+     * () => new ResendEmailAdapter(env.RESEND_API_KEY)
+     * ↑この関数が「ファクトリ（工場）」
+     *
+     * resolve が呼ばれるたびに、この関数が実行されて
+     * 新しい ResendEmailAdapter インスタンスが作られる。
+     *
+     * useClass では引数を渡せないため、この方法を採用。
+     *
+     * 【処理の流れ】
+     * 1. container.resolve(EmailSenderPortToken) が呼ばれる
+     * 2. DIコンテナがファクトリ関数を実行
+     * 3. new ResendEmailAdapter(env.RESEND_API_KEY) が実行される
+     * 4. 作成されたインスタンスが返される
+     */
+    container.register(EmailSenderPortToken, {
+        useFactory: () => new ResendEmailAdapter(env.RESEND_API_KEY),
+    })
+
+    /**
+     * NotificationService: メール通知を送るサービス
+     *
+     * コンストラクタで EmailSenderPort を @inject しているため、
+     * 上で登録した ResendEmailAdapter が自動的に注入される。
+     */
+    container.registerSingleton(NotificationService, NotificationService)
+
+    // ========================================
+    // ⚠️ イベント購読設定は削除
+    // ========================================
+    // これは app-initializer.ts で行う
+
+    isInitialized = true
+    console.log(
+        `✅ DI container initialized (Supabase: ${useSupabase ? 'enabled' : 'disabled'})`
+    )
 }
 
 /**
@@ -291,9 +424,9 @@ export function setupContainer(env: CloudflareBindings): void {
  * beforeEach などでコンテナをリセットすることがある。
  */
 export function resetContainer(): void {
-    container.clearInstances();
-    isInitialized = false;
-    console.log('🔄 DI container reset');
+    container.clearInstances()
+    isInitialized = false
+    console.log('🔄 DI container reset')
 }
 
-export { container };
+export { container }

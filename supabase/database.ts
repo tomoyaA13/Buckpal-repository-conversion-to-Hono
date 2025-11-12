@@ -76,6 +76,30 @@ export type Database = {
           },
         ]
       }
+      domain_events: {
+        Row: {
+          created_at: string
+          event_data: Json
+          event_id: string
+          event_type: string
+          occurred_on: string
+        }
+        Insert: {
+          created_at?: string
+          event_data: Json
+          event_id: string
+          event_type: string
+          occurred_on: string
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json
+          event_id?: string
+          event_type?: string
+          occurred_on?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

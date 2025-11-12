@@ -1,4 +1,7 @@
 import {inject, injectable} from 'tsyringe';
+import {EventBus} from "../../../common/event/EventBus";
+import {MoneyTransferredEvent} from "../../../common/event/events/MoneyTransferredEvent";
+import {EventBusToken} from "../../../config/types";
 import {MoneyTransferProperties, MoneyTransferPropertiesToken} from '../domain/service/MoneyTransferProperties';
 import {SendMoneyDomainService} from '../domain/service/SendMoneyDomainService';
 import {SendMoneyCommand} from '../port/in/SendMoneyCommand';
@@ -270,7 +273,6 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
          */
         @inject(SendMoneyDomainService)
         private readonly domainService: SendMoneyDomainService,
-
         /**
          * 【依存2】LoadAccountPort（読み込みポート）
          *
@@ -329,7 +331,6 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
          */
         @inject(LoadAccountPortToken)
         private readonly loadAccountPort: LoadAccountPort,
-
         /**
          * 【依存3】UpdateAccountStatePort（更新ポート）
          *
@@ -384,7 +385,6 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
          */
         @inject(UpdateAccountStatePortToken)
         private readonly updateAccountStatePort: UpdateAccountStatePort,
-
         /**
          * 【依存4】AccountLock（アカウントロック機構）
          *
@@ -432,7 +432,6 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
          */
         @inject(AccountLockToken)
         private readonly accountLock: AccountLock,
-
         /**
          * 【依存5】MoneyTransferProperties（送金設定）
          *
@@ -470,7 +469,18 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
          * 3. 全てのサービスで同じ設定を参照できる
          */
         @inject(MoneyTransferPropertiesToken)
-        private readonly moneyTransferProperties: MoneyTransferProperties
+        private readonly moneyTransferProperties: MoneyTransferProperties,
+        /**
+         * EventBus: イベントを発行するために使用
+         *
+         * 【なぜ注入するのか】
+         * - SendMoneyApplicationService は NotificationService を知らない
+         * - イベントを発行するだけ
+         * - 誰が購読しているかは関心事ではない
+         * - これが「疎結合」の実現
+         */
+        @inject(EventBusToken)
+        private readonly eventBus: EventBus
     ) {
         /**
          * ========================================
@@ -653,6 +663,33 @@ export class SendMoneyApplicationService implements SendMoneyUseCase {
             await this.updateAccountStatePort.updateActivities(targetAccount);
 
             // ✅ 成功時は何も返さない（void）
+
+            // ========================================
+            // ⑤ イベント発行（新規追加）
+            // ========================================
+            /**
+             * 送金が成功したらイベントを発行
+             *
+             * 【重要なポイント】
+             * - このコードは NotificationService の存在を知らない
+             * - イベントを発行するだけ
+             * - EventBus が購読者全てに通知してくれる
+             * - 新しい購読者（例: AuditLogService）を追加しても、
+             *   このコードは変更不要
+             *
+             * これが「開放閉鎖原則（OCP）」の実現！
+             */
+            console.log('📤 Publishing MoneyTransferred event')
+
+            await this.eventBus.publish(
+                new MoneyTransferredEvent(
+                    command.sourceAccountId,
+                    command.targetAccountId,
+                    command.money
+                )
+            )
+
+            console.log('✅ Money transfer completed successfully')
         } finally {
             // ⑤ リソース解放（必ず実行）
             /**

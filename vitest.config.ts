@@ -1,16 +1,25 @@
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
+import {defineWorkersConfig} from "@cloudflare/vitest-pool-workers/config";
+import {nodePolyfills} from "vite-plugin-node-polyfills";
+import {config} from "dotenv";
+
+// .dev.varsまたは.envファイルを読み込む
+config({path: ".dev.vars"});
+
+if (!process.env.SUPABASE_PUBLISHABLE_KEY) {
+    throw new Error("SUPABASE_PUBLISHABLE_KEY is not set in .dev.vars");
+}
 
 export default defineWorkersConfig({
     test: {
         poolOptions: {
             workers: {
                 singleWorker: true,
-                wrangler: { configPath: "./wrangler.jsonc" },
+                wrangler: {configPath: "./wrangler.jsonc"},
                 miniflare: {
                     bindings: {
                         SUPABASE_URL: "http://127.0.0.1:54321",
-                        SUPABASE_PUBLISHABLE_KEY:'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
+                        SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
+                        RESEND_API_KEY: "re_test_dummy_key_12345678"
                     },
                 },
             },
