@@ -94,9 +94,9 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
     // ========================================
     beforeAll(() => {
         // ===== 環境変数の確認と設定 =====
-        // vitest.config.ts の miniflare.bindings から取得
         const supabaseUrl = env.SUPABASE_URL;
         const supabaseKey = env.SUPABASE_PUBLISHABLE_KEY;
+        const resendApiKey = env.RESEND_API_KEY;  // ← 追加
 
         // 環境変数が設定されていない場合はエラーを投げる
         if (!supabaseUrl || !supabaseKey) {
@@ -105,13 +105,19 @@ describe("SendMoneyController（Webアダプタ統合テスト + ローカルSup
             );
         }
 
+        if (!resendApiKey) {  // ← 追加
+            throw new Error("❌ RESEND_API_KEY must be set in vitest.config.ts");
+        }
+
         console.log("✅ Environment variables loaded:");
         console.log(`   SUPABASE_URL: ${supabaseUrl}`);
         console.log(`   SUPABASE_PUBLISHABLE_KEY: ${supabaseKey.substring(0, 20)}...`);
+        console.log(`   RESEND_API_KEY: ${resendApiKey.substring(0, 20)}...`);  // ← 追加
 
         // mockEnv に設定（DIコンテナで使用）
         mockEnv.SUPABASE_URL = supabaseUrl;
         mockEnv.SUPABASE_PUBLISHABLE_KEY = supabaseKey;
+        mockEnv.RESEND_API_KEY = resendApiKey;  // ← 追加
 
         // ===== ローカルSupabaseクライアントを作成 =====
         supabase = createClient<Database>(supabaseUrl, supabaseKey);

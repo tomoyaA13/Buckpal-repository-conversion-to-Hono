@@ -16,6 +16,8 @@ declare module "cloudflare:test" {
         SUPABASE_PUBLISHABLE_KEY: string;
         SUPABASE_SERVICE_ROLE_KEY: string;
 
+        RESEND_API_KEY: string;
+
         // 必要に応じて他のテスト用バインディングを追加
         // 例: TEST_KV: KVNamespace;
     }
